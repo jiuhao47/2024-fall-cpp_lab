@@ -1,0 +1,1 @@
+(compUnit (funcDef void test ( ) (block { (blockItem (stmt (block { (blockItem (stmt (block { }))) }))) })) (funcDef void func ( ) (block { (blockItem (decl (varDecl (bType int) (varDef x) , (varDef y) ;))) (blockItem (stmt (exp (lval test)) <missing ';'>)) (blockItem (stmt (exp ( exp )) ;)) })) <EOF>)

@@ -1,0 +1,1 @@
+(compUnit (funcDef void func ( ) (block { (blockItem (stmt (block { (blockItem (stmt ;)) }))) (blockItem (stmt (block { (blockItem (decl (varDecl (bType int) (varDef X) ;))) (blockItem (stmt (block { (blockItem (decl (varDecl (bType int) (varDef Y) ;))) }))) (blockItem (decl (varDecl (bType int) (varDef Z) ;))) }))) })) <EOF>)
