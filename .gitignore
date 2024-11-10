@@ -2,3 +2,12 @@ antlr4_runtime/
 CMakeFiles/
 CMakeCache.txt
 
+*.class
+*.java
+*.interp
+*.tokens
+*.log
+*.tmp
+
+.DS_Store
+OUTLINE_1

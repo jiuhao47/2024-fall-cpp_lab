@@ -1,1 +1,0 @@
-(compUnit (funcDef void a ( ) (block { })) (funcDef void b ( ) (block { (blockItem (stmt ;)) })) (funcDef void c ( ) (block { (blockItem (decl (varDecl (bType int) (varDef A) ;))) (blockItem (stmt (exp (lval A) = (exp (number 1))) ;)) })) <EOF>)

@@ -32,33 +32,33 @@ tokens {
     IntConst
 }
 
-Comma:
-SemiColon:
-Assign:
+Comma: ',';
+SemiColon: ';';
+Assign: '=';
 
-LeftBracket:
-RightBracket:
-LeftBrace:
-RightBrace:
-LeftParen:
-RightParen:
+LeftBracket: '[';
+RightBracket: ']';
+LeftBrace: '{';
+RightBrace: '}';
+LeftParen: '(';
+RightParen: ')';
 
-If:
-Else:
-While:
+If: 'if';
+Else: 'else';
+While: 'while';
 
-Equal:
-NonEqual:
-Less:
-Greater:
-LessEqual:
-GreaterEqual:
+Equal: '==';
+NonEqual: '!=';
+Less: '<';
+Greater: '>';
+LessEqual: '<=';
+GreaterEqual: '>=';
 
-Plus:
-Minus:
-Multiply:
-Divide:
-Modulo: 
+Plus: '+';
+Minus: '-';
+Multiply: '*';
+Divide: '/';
+Modulo: '%';
 
 Int: 'int';
 Void: 'void';
@@ -66,8 +66,8 @@ Obc: 'obc';
 Const: 'const';
 
 Identifier: [_a-zA-Z][a-zA-Z0-9_]*;
-IntConst:
+IntConst: ('0x' | '0X') [0-9a-fA-F]+ | [0-9]+;
 
-BlockComment :
-LineComment :
+BlockComment : '/*' .*? '*/' -> skip;
+LineComment : '//' ~[\r\n]* -> skip;
 WhiteSpace: [ \t\r\n]+ -> skip;
