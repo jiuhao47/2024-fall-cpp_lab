@@ -66,7 +66,7 @@ Obc: 'obc';
 Const: 'const';
 
 Identifier: [_a-zA-Z][a-zA-Z0-9_]*;
-IntConst: [0-9]+;
+IntConst: ('0x' | '0X') [0-9a-fA-F]+ | [0-9]+;
 
 BlockComment : '/*' .*? '*/' -> skip;
 LineComment : '//' ~[\r\n]* -> skip;

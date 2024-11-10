@@ -7,12 +7,14 @@
 
 ### Lab1-1
 
-- SafeCLexer.g4: Done by jiuhao
-    - 这个感觉没啥问题，因为比较直观
-
+- SafeCLexer.g4:
+    - Done by jiuhao at 2024-11-10-14:23
+    - Optimized by Cilrag at 
 - SafeCParser.g4: 
-    - 目前是简单写了一版本，没Debug，感觉有大问题就是了
+    - Done by jiuhao at 2024-11-10-14:23
+    - Optimized by Cilrag at 
 
-### Lab
+### Lab1-2
 
-15个函数，先把实验一做了再说吧。
+- 十五个函数
+
