@@ -11,4 +11,7 @@ CMakeCache.txt
 
 .DS_Store
 OUTLINE_1
+
 output/
+build/
+.cache/
