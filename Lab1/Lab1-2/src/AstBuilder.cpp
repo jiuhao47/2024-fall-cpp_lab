@@ -36,6 +36,8 @@ antlrcpp::Any AstBuilder::visitCompUnit(SafeCParser::CompUnitContext *ctx) {
 
 antlrcpp::Any AstBuilder::visitDecl(SafeCParser::DeclContext *ctx) {
 
+  // decl: constDecl | varDecl;
+
   if (auto const_decl = ctx->constDecl()) {
     return visit(const_decl);
 
@@ -86,7 +88,8 @@ antlrcpp::Any AstBuilder::visitConstDecl(SafeCParser::ConstDeclContext *ctx) {
 
 antlrcpp::Any AstBuilder::visitConstDef(SafeCParser::ConstDefContext *ctx) {
 
-  // struct var_def_node : stmt_node {
+  // constDef: (Identifier | array) Assign (exp | (LeftBrace (exp (Comma exp)*)?
+  // RightBrace)); struct var_def_node : stmt_node {
   //     bool is_const;
   //     BType btype;
   //     std::string name;
@@ -96,14 +99,38 @@ antlrcpp::Any AstBuilder::visitConstDef(SafeCParser::ConstDefContext *ctx) {
   //     virtual void accept(AstNode_Visitor& visitor) override;
   // };
 
+  // if (auto array = ctx->array()) {
+  //   // TODO: Array
+
+  //
+
+  // } else if (ctx->Identifier()) {
+  //   // TODO: Scalar
+
+  // } else {
+  //   assert(0 && "Unknown ConstDef");
+  // }
+
+  auto result = new var_def_node;
+
+  result->line = ctx->getStart()->getLine();
+  result->pos = ctx->getStart()->getCharPositionInLine();
+
   if (auto array = ctx->array()) {
-    // TODO: Array
-
-  } else if (ctx->Identifier()) {
-    // TODO: Scalar
-
   } else {
-    assert(0 && "Unknown ConstDef");
+    result->name = ctx->Identifier()->getText();
+
+    if (ctx->LeftBrace()) {
+      // Initializers
+      for (auto exp : ctx->exp()) {
+        auto exp_n = visit(exp).as<expr_node *>();
+        result->initializers.push_back(ptr<expr_node>(exp_n));
+      }
+    } else {
+      // Scalar
+      result->initializers.push_back(
+          ptr<expr_node>(visit(ctx->exp()).as<expr_node *>()));
+    }
   }
 }
 
