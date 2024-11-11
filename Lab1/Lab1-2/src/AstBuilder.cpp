@@ -49,13 +49,53 @@ antlrcpp::Any AstBuilder::visitDecl(SafeCParser::DeclContext *ctx) {
 
 antlrcpp::Any AstBuilder::visitFuncDef(SafeCParser::FuncDefContext *ctx) {
   // TODO: FucDef
+  //
+  // funcDef: Void Identifier LeftParen RightParen block;
+
+  auto result = new func_def_node;
+  result->line = ctx->getStart()->getLine();
+  result->pos = ctx->getStart()->getCharPositionInLine();
+
+  result->name = ctx->Identifier()->getText();
+  result->body.reset(visit(ctx->block()).as<block_node *>());
+
+  return result;
 }
 
 antlrcpp::Any AstBuilder::visitConstDecl(SafeCParser::ConstDeclContext *ctx) {
   // TODO: ConstDecl
+  //
+  // constDecl: Const bType constDef (Comma constDef)* SemiColon;
+
+  // struct var_def_stmt_node : stmt_node, global_def_node {
+  //   ptr_vector<var_def_node> var_defs;
+  //   virtual void accept(AstNode_Visitor &visitor) override;
+  // };
+
+  auto result = new var_def_stmt_node;
+  result->line = ctx->getStart()->getLine();
+  result->pos = ctx->getStart()->getCharPositionInLine();
+
+  for (auto const_def : ctx->constDef()) {
+    auto const_def_n = visit(const_def).as<var_def_node *>();
+    result->var_defs.push_back(ptr<var_def_node>(const_def_n));
+  }
+
+  return result;
 }
 
 antlrcpp::Any AstBuilder::visitConstDef(SafeCParser::ConstDefContext *ctx) {
+
+  // struct var_def_node : stmt_node {
+  //     bool is_const;
+  //     BType btype;
+  //     std::string name;
+  //     bool is_obc;
+  //     ptr<expr_node> array_length;
+  //     ptr_vector<expr_node> initializers;
+  //     virtual void accept(AstNode_Visitor& visitor) override;
+  // };
+
   if (auto array = ctx->array()) {
     // TODO: Array
 
@@ -69,6 +109,8 @@ antlrcpp::Any AstBuilder::visitConstDef(SafeCParser::ConstDefContext *ctx) {
 
 antlrcpp::Any AstBuilder::visitVarDecl(SafeCParser::VarDeclContext *ctx) {
   // TODO: varDecl
+
+  // varDecl: bType varDef (Comma varDef)* SemiColon;
 }
 
 antlrcpp::Any AstBuilder::visitBType(SafeCParser::BTypeContext *ctx) {
@@ -115,18 +157,63 @@ antlrcpp::Any AstBuilder::visitBlock(SafeCParser::BlockContext *ctx) {
 
 antlrcpp::Any AstBuilder::visitBlockItem(SafeCParser::BlockItemContext *ctx) {
   // TODO: blockItem
+  //
+  // blockItem: decl | stmt;
+
+  if (auto decl = ctx->decl()) {
+    return visit(decl);
+
+  } else if (auto stmt = ctx->stmt()) {
+    return visit(stmt);
+
+  } else {
+    assert(0 && "Unknown BlockItem.");
+  }
 }
 
 antlrcpp::Any AstBuilder::visitStmt(SafeCParser::StmtContext *ctx) {
   // TODO: Stmt
+
+  // stmt:
+  //     block
+  //     | SemiColon
+  //     | exp SemiColon
+  //     | If LeftParen cond RightParen stmt (Else stmt)?
+  //     | While LeftParen cond RightParen stmt;
+
+  if (auto block = ctx->block()) {
+    return visit(block);
+
+  } else if (ctx->SemiColon()) {
+    return visit(ctx->SemiColon());
+
+  } else if (auto exp = ctx->exp()) {
+    return visit(exp);
+
+  } else if (auto if_stmt = ctx->If()) {
+    return visit(if_stmt);
+
+  } else if (auto while_stmt = ctx->While()) {
+    return visit(while_stmt);
+
+  } else {
+    assert(0 && "Unknown Stmt.");
+  }
 }
 
 antlrcpp::Any AstBuilder::visitCond(SafeCParser::CondContext *ctx) {
   // TODO: Cond
+  //
+  // cond: exp;
+
+  return visit(ctx->exp());
 }
 
 antlrcpp::Any AstBuilder::visitLval(SafeCParser::LvalContext *ctx) {
   // TODO: Lval
+
+  // lval: Identifier | (Identifier LeftBracket exp RightBracket) | (Identifier
+  // LeftParen RightParen );
 }
 
 antlrcpp::Any AstBuilder::visitNumber(SafeCParser::NumberContext *ctx) {
