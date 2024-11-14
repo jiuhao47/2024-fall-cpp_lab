@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # set -euxo pipefail
+#
+debug=$2
+output=$1
+rm -rf ./output
 
 if [ ! -d ./output ]
 then 
@@ -23,8 +27,13 @@ do
 		do 
 			if [ -f ./tests/$dir/$file ]
 			then
-				echo "./build/astbuilder ./tests/$dir/$file > ./output/$dir/$file.output"
-				./build/astbuilder ./tests/$dir/$file > ./output/$dir/$file.output
+        if [ "$output" = "true" ]; then
+            echo "./build/astbuilder -d ./tests/$dir/$file > ./output/$dir/$file.output"
+            ./build/astbuilder $debug ./tests/$dir/$file > ./output/$dir/$file.output
+        else
+            echo "./build/astbuilder -d ./tests/$dir/$file"
+            ./build/astbuilder $debug ./tests/$dir/$file
+        fi
 			fi
 		done
 	fi

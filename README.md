@@ -7,16 +7,25 @@
 
 ### Lab1-1
 
-- SafeCLexer.g4:
-    - Done by jiuhao at 2024-11-10-14:23
-    - Optimized by Cilrag at 2024-11-11 18:50
-      - 无修改
-- SafeCParser.g4: 
-    - Done by jiuhao at 2024-11-10-14:23
-    - Optimized by Cilrag at 2024-11-11 18:50
-      - 将符号名称改为直接引用字符串；条件表达式cond中明确列举出了支持的运算符号；表达式部分expr不再使用拆分操作符的方式，直接使用符号
-      - 证实报错，无需修改
+- 2024-11-10
+    - SafeCLexer.g4:
+        - Done by jiuhao at 2024-11-10-14:23
+        - Optimized by Cilrag at 2024-11-11 18:50
+        - 无修改
+    - SafeCParser.g4: 
+        - Done by jiuhao at 2024-11-10-14:23
+        - Optimized by Cilrag at 2024-11-11 18:50
+        - 将符号名称改为直接引用字符串；条件表达式cond中明确列举出了支持的运算符号；表达式部分expr不再使用拆分操作符的方式，直接使用符号
+        - 证实报错，无需修改
 ### Lab1-2
 
-- 十五个函数
+- 2024-11-14
+    - 基本完成了AstBuilder.cpp的框架编写，但有Bug: Done by jiuhao && Cilrag
+    - 需要Cilrag重构visitexp函数，这个函数的分支判断逻辑有大问题（迭代过程与顺序有问题，注意运用
+
+    ```c
+    antlrcpp::Any AstBuilder::visitExp(SafeCParser::ExpContext *ctx) {
+    ```
+
+    中的ExpContext结构体中的现有判断逻辑。
 
