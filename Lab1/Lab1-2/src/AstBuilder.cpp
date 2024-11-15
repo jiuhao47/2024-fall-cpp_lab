@@ -148,6 +148,7 @@ antlrcpp::Any AstBuilder::visitConstDef(SafeCParser::ConstDefContext *ctx) {
   result->line = ctx->getStart()->getLine();
   result->pos = ctx->getStart()->getCharPositionInLine();
   result->is_const = true;
+  result->btype = BType::INT;
 
   if (auto array = ctx->array()) {
     // TODO: Array
@@ -237,6 +238,7 @@ antlrcpp::Any AstBuilder::visitVarDef(SafeCParser::VarDefContext *ctx) {
     result->pos = ctx->getStart()->getCharPositionInLine();
 
     result->is_const = false;
+    result->btype = BType::INT;
     result->name = ctx->Identifier()->getText();
 
     if (auto exp = ctx->exp(0)) {
@@ -274,6 +276,15 @@ antlrcpp::Any AstBuilder::visitObcArray(SafeCParser::ObcArrayContext *ctx) {
   // TODO: ObcArray
   //
   // obcArray: Obc unobcArray;
+  // struct var_def_node : stmt_node {
+  //   bool is_const;
+  //   BType btype;
+  //   std::string name;
+  //   bool is_obc;
+  //   ptr<expr_node> array_length;
+  //   ptr_vector<expr_node> initializers;
+  //   virtual void accept(AstNode_Visitor &visitor) override;
+  // };
 
   auto result = new var_def_node;
 
@@ -281,6 +292,7 @@ antlrcpp::Any AstBuilder::visitObcArray(SafeCParser::ObcArrayContext *ctx) {
   result->pos = ctx->getStart()->getCharPositionInLine();
 
   result->is_obc = true;
+  result->btype = BType::INT;
   result->name = ctx->unobcArray()->Identifier()->getText();
   if (JJY_DEBUG)
     printf("%s %s [info] %s %d %d %d\n", JJY_DEBUG_SIGN, __func__,
@@ -313,6 +325,7 @@ antlrcpp::Any AstBuilder::visitUnobcArray(SafeCParser::UnobcArrayContext *ctx) {
   result->pos = ctx->getStart()->getCharPositionInLine();
 
   result->is_obc = false;
+  result->btype = BType::INT;
   result->name = ctx->Identifier()->getText();
 
   if (auto exp = ctx->exp()) {
@@ -335,7 +348,7 @@ antlrcpp::Any AstBuilder::visitBlock(SafeCParser::BlockContext *ctx) {
     auto block_item_n = visit(block_item).as<stmt_node *>();
     result->body.push_back(ptr<stmt_node>(block_item_n));
   }
-  return dynamic_cast<stmt_node *>(result);
+  return dynamic_cast<block_node *>(result);
 }
 
 antlrcpp::Any AstBuilder::visitBlockItem(SafeCParser::BlockItemContext *ctx) {
