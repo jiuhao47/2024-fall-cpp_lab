@@ -1,3 +1,4 @@
+
 #include "AstBuilder.h"
 #define JJY_DEBUG 1
 #define JJY_DEBUG_SIGN "[j] "
@@ -23,7 +24,6 @@ antlrcpp::Any AstBuilder::visitCompUnit(SafeCParser::CompUnitContext *ctx) {
       auto var_def_stmt_n =
           dynamic_cast<var_def_stmt_node *>(global_def_stmt_n);
       result->comp_units.push_back(ptr<comp_unit_child_node>(var_def_stmt_n));
-
     } else if (auto func_def = dynamic_cast<SafeCParser::FuncDefContext *>(
                    compile_units[i])) {
       // Function define
@@ -32,7 +32,6 @@ antlrcpp::Any AstBuilder::visitCompUnit(SafeCParser::CompUnitContext *ctx) {
       }
       auto func_def_n = visit(func_def).as<func_def_node *>();
       result->comp_units.push_back(ptr<comp_unit_child_node>(func_def_n));
-
     } else {
       // Error.
       log(compile_units[i]->getText());
@@ -53,10 +52,8 @@ antlrcpp::Any AstBuilder::visitDecl(SafeCParser::DeclContext *ctx) {
 
   if (auto const_decl = ctx->constDecl()) {
     return visit(const_decl);
-
   } else if (auto var_decl = ctx->varDecl()) {
     return visit(var_decl);
-
   } else {
     assert(0 && "Unknown DeclContext.");
   }
@@ -246,7 +243,6 @@ antlrcpp::Any AstBuilder::visitVarDef(SafeCParser::VarDefContext *ctx) {
           ptr<expr_node>(visit(exp).as<expr_node *>()));
     }
     return result;
-
   } else {
     assert(0 && "Unknown VarDef");
   }
@@ -361,10 +357,8 @@ antlrcpp::Any AstBuilder::visitBlockItem(SafeCParser::BlockItemContext *ctx) {
 
   if (auto decl = ctx->decl()) {
     return visit(decl);
-
   } else if (auto stmt = ctx->stmt()) {
     return visit(stmt);
-
   } else {
     assert(0 && "Unknown BlockItem.");
   }
@@ -387,50 +381,22 @@ antlrcpp::Any AstBuilder::visitStmt(SafeCParser::StmtContext *ctx) {
     if (JJY_DEBUG)
       printf("%s %s [info] Stmt block\n", JJY_DEBUG_SIGN, __func__);
     return visit(block);
-
   } else if (ctx->isEmpty()) {
     if (JJY_DEBUG)
       printf("%s %s [info] Stmt SemiColon\n", JJY_DEBUG_SIGN, __func__);
     return visit(ctx->SemiColon());
-
   } else if (auto exp = ctx->exp()) {
     if (JJY_DEBUG)
       printf("%s %s [info] Stmt exp\n", JJY_DEBUG_SIGN, __func__);
     return visit(exp);
-
   } else if (auto if_stmt = ctx->If()) {
     if (JJY_DEBUG)
       printf("%s %s [info] Stmt If\n", JJY_DEBUG_SIGN, __func__);
-    // TODO: if_stmt
-    //
-    // struct if_stmt_node : stmt_node {
-    //   ptr<cond_node> cond;
-    //   ptr<stmt_node> if_body;
-    //   ptr<stmt_node> else_body;
-    //   virtual void accept(AstNode_Visitor &visitor) override;
-    // };
-    // | If LeftParen cond RightParen stmt (Else stmt)?
-
-    auto result = new if_stmt_node;
-
-    result->line = ctx->getStart()->getLine();
-    result->pos = ctx->getStart()->getCharPositionInLine();
-
-    result->cond.reset(visit(ctx->cond()).as<cond_node *>());
-
-    result->if_body.reset(visit(ctx->stmt(0)).as<stmt_node *>());
-
-    if (auto else_stmt = ctx->stmt(1)) {
-      result->else_body.reset(visit(else_stmt).as<stmt_node *>());
-    }
-
-    return dynamic_cast<stmt_node *>(result);
-
+    return visit(if_stmt);
   } else if (auto while_stmt = ctx->While()) {
     if (JJY_DEBUG)
       printf("%s %s [info] Stmt While\n", JJY_DEBUG_SIGN, __func__);
     return visit(while_stmt);
-
   } else {
     assert(0 && "Unknown Stmt.");
   }
@@ -443,34 +409,8 @@ antlrcpp::Any AstBuilder::visitCond(SafeCParser::CondContext *ctx) {
   // TODO: Cond
   //
   // cond: exp;
-  //
-  // struct cond_node : expr_node {
-  //   RelOp op;
-  //   ptr<expr_node> lhs, rhs;
-  //   virtual void accept(AstNode_Visitor &visitor) override;
-  // };
-  auto result = new cond_node;
 
-  auto exp = ctx->exp();
-
-  auto exp_result = visit(exp).as<expr_node *>();
-
-  result->line = exp_result->line;
-  result->pos = exp_result->pos;
-
-
-
-
-
-
-
-
-
-  
-
-
-
-  return dynamic_cast<expr_node *>(result);
+  return visit(ctx->exp());
 }
 
 antlrcpp::Any AstBuilder::visitLval(SafeCParser::LvalContext *ctx) {
@@ -544,115 +484,106 @@ antlrcpp::Any AstBuilder::visitExp(SafeCParser::ExpContext *ctx) {
   //     exp;
   auto exps = ctx->exp();
 
-  try {
-    if (exps.size() == 2) {
-      // binary op
-      auto result = new binop_expr_node;
-      result->line = ctx->getStart()->getLine();
-      result->pos = ctx->getStart()->getCharPositionInLine();
-
-      if (ctx->Plus()) {
-        result->op = BinOp::PLUS;
-      } else if (ctx->Minus()) {
-        result->op = BinOp::MINUS;
-      } else if (ctx->Multiply()) {
-        result->op = BinOp::MULTIPLY;
-      } else if (ctx->Divide()) {
-        result->op = BinOp::DIVIDE;
-      } else if (ctx->Modulo()) {
-        result->op = BinOp::MODULO;
-      }
-
-      result->lhs.reset(visit(ctx->exp(0)).as<expr_node *>());
-      result->rhs.reset(visit(ctx->exp(1)).as<expr_node *>());
-
-      return dynamic_cast<expr_node *>(result);
-
-    } else if (exps.size() == 1) {
-      // TODO: Handle other exprs.
-      // else if (...) {
-      //
-      // struct unaryop_expr_node : expr_node {
-      //   UnaryOp op;
-      //   ptr<expr_node> rhs;
-      //   virtual void accept(AstNode_Visitor &visitor) override;
-      // };
-
-      auto result = new unaryop_expr_node;
-      result->line = ctx->getStart()->getLine();
-      result->pos = ctx->getStart()->getCharPositionInLine();
-
-      if (ctx->Plus()) {
-        result->op = UnaryOp::PLUS;
-      } else if (ctx->Minus()) {
-        result->op = UnaryOp::MINUS;
-      }
-
-      result->rhs.reset(visit(ctx->exp(0)).as<expr_node *>());
-
-      return dynamic_cast<expr_node *>(result);
-
-    } else if (auto lval = ctx->lval()) {
-      // lval
-      return visit(lval);
-
-    } else if (auto number = ctx->number()) {
-      // number
-      return visit(number);
-    } else if (auto exp = ctx->exp(1)) {
-      // exp (Equal | NonEqual | Less | Greater | LessEqual | GreaterEqual) exp
-      auto result = new cond_node;
-      result->line = ctx->getStart()->getLine();
-      result->pos = ctx->getStart()->getCharPositionInLine();
-
-      if (ctx->Equal()) {
-        result->op = RelOp::EQUAL;
-      } else if (ctx->NonEqual()) {
-        result->op = RelOp::NON_EQUAL;
-      } else if (ctx->Less()) {
-        result->op = RelOp::LESS;
-      } else if (ctx->LessEqual()) {
-        result->op = RelOp::LESS_EQUAL;
-      } else if (ctx->Greater()) {
-        result->op = RelOp::GREATER;
-      } else if (ctx->GreaterEqual()) {
-        result->op = RelOp::GREATER_EQUAL;
-      }
-
-      result->lhs.reset(visit(ctx->exp(0)).as<expr_node *>());
-      result->rhs.reset(visit(ctx->exp(1)).as<expr_node *>());
-
-      return dynamic_cast<expr_node *>(result);
-    } else if (ctx->Assign()) {
-      // lval Assign exp
-      // struct assign_stmt_node : stmt_node {
-      //   ptr<lval_node> target;
-      //   ptr<expr_node> value;
-      //   virtual void accept(AstNode_Visitor &visitor) override;
-      // };
-      auto result = new assign_stmt_node;
-      result->line = ctx->getStart()->getLine();
-      result->pos = ctx->getStart()->getCharPositionInLine();
-
-      result->target.reset(visit(ctx->lval()).as<lval_node *>());
-      result->value.reset(visit(ctx->exp(0)).as<expr_node *>());
-
-      return dynamic_cast<expr_node *>(result);
-    } else if (ctx->LeftParen()) {
-      // (exp)
-      return visit(ctx->exp(0));
-    } else {
-      assert(0 && "Unknown Exp.");
-    }
-  } catch (const std::bad_cast &e) {
-    std::cerr << "Bad cast: " << e.what() << std::endl;
-    throw; // Re-throw the exception after logging
+  if (ctx->Assign()) {
+    // 赋值表达式: lval = exp
+    auto result = new assign_stmt_node;
+    result->line = ctx->getStart()->getLine();
+    result->pos = ctx->getStart()->getCharPositionInLine();
+    result->target.reset(visit(ctx->lval()).as<lval_node *>());
+    result->value.reset(visit(exps[0]).as<expr_node *>());
+    return dynamic_cast<stmt_node *>(result);
   }
+
+  if (ctx->lval()) {
+    // 左值: lval
+    return visit(ctx->lval());
+  }
+
+  if (ctx->number()) {
+    // 数字: number
+    return visit(ctx->number());
+  }
+
+  if (ctx->LeftParen() && ctx->Identifier()) {
+    // 函数调用: Identifier (exp, exp, ...)
+    auto result = new func_call_expr_node;
+    result->line = ctx->getStart()->getLine();
+    result->pos = ctx->getStart()->getCharPositionInLine();
+    result->func_name = ctx->Identifier()->getText();
+
+    for (auto arg : exps) {
+      result->args.push_back(ptr<expr_node>(visit(arg).as<expr_node *>()));
+    }
+
+    return dynamic_cast<expr_node *>(result);
+  }
+
+  if (ctx->LeftParen()) {
+    // 括号表达式: (exp)
+    return visit(exps[0]);
+  }
+
+  if (exps.size() == 2) {
+    // 二元运算: exp (op) exp
+    auto result = new binop_expr_node;
+    result->line = ctx->getStart()->getLine();
+    result->pos = ctx->getStart()->getCharPositionInLine();
+
+    if (ctx->Plus()) {
+      result->op = BinOp::PLUS;
+    } else if (ctx->Minus()) {
+      result->op = BinOp::MINUS;
+    } else if (ctx->Multiply()) {
+      result->op = BinOp::MULTIPLY;
+    } else if (ctx->Divide()) {
+      result->op = BinOp::DIVIDE;
+    } else if (ctx->Modulo()) {
+      result->op = BinOp::MODULO;
+    } else if (ctx->Equal()) {
+      result->op = RelOp::EQUAL;
+    } else if (ctx->NonEqual()) {
+      result->op = RelOp::NON_EQUAL;
+    } else if (ctx->Less()) {
+      result->op = RelOp::LESS;
+    } else if (ctx->LessEqual()) {
+      result->op = RelOp::LESS_EQUAL;
+    } else if (ctx->Greater()) {
+      result->op = RelOp::GREATER;
+    } else if (ctx->GreaterEqual()) {
+      result->op = RelOp::GREATER_EQUAL;
+    } else {
+      assert(0 && "Unknown binary operator in exp");
+    }
+
+    result->lhs.reset(visit(exps[0]).as<expr_node *>());
+    result->rhs.reset(visit(exps[1]).as<expr_node *>());
+
+    return dynamic_cast<expr_node *>(result);
+  }
+
+  if (exps.size() == 1) {
+    // 一元运算: (op) exp
+    auto result = new unaryop_expr_node;
+    result->line = ctx->getStart()->getLine();
+    result->pos = ctx->getStart()->getCharPositionInLine();
+
+    if (ctx->Plus()) {
+      result->op = UnaryOp::PLUS;
+    } else if (ctx->Minus()) {
+      result->op = UnaryOp::MINUS;
+    } else {
+      assert(0 && "Unknown unary operator in exp");
+    }
+
+    result->rhs.reset(visit(exps[0]).as<expr_node *>());
+    return dynamic_cast<expr_node *>(result);
+  }
+
+  assert(0 && "Unknown Exp.");
 }
 
 ptr<ast_node> AstBuilder::operator()(antlr4::tree::ParseTree *ctx) {
   auto result = visit(ctx);
-
   if (result.is<ast_node *>())
     return ptr<ast_node>(result.as<ast_node *>());
   if (result.is<comp_unit_node *>())
@@ -689,7 +620,6 @@ ptr<ast_node> AstBuilder::operator()(antlr4::tree::ParseTree *ctx) {
     return ptr<ast_node>(result.as<while_stmt_node *>());
   if (result.is<empty_stmt_node *>())
     return ptr<ast_node>(result.as<empty_stmt_node *>());
-
   return ptr<ast_node>(result.as<ast_node *>());
 }
 } // namespace antlrcpp
