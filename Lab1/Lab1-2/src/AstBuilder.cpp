@@ -401,7 +401,30 @@ antlrcpp::Any AstBuilder::visitStmt(SafeCParser::StmtContext *ctx) {
   } else if (auto if_stmt = ctx->If()) {
     if (JJY_DEBUG)
       printf("%s %s [info] Stmt If\n", JJY_DEBUG_SIGN, __func__);
-    return visit(if_stmt);
+    // TODO: if_stmt
+    //
+    // struct if_stmt_node : stmt_node {
+    //   ptr<cond_node> cond;
+    //   ptr<stmt_node> if_body;
+    //   ptr<stmt_node> else_body;
+    //   virtual void accept(AstNode_Visitor &visitor) override;
+    // };
+    // | If LeftParen cond RightParen stmt (Else stmt)?
+
+    auto result = new if_stmt_node;
+
+    result->line = ctx->getStart()->getLine();
+    result->pos = ctx->getStart()->getCharPositionInLine();
+
+    result->cond.reset(visit(ctx->cond()).as<cond_node *>());
+
+    result->if_body.reset(visit(ctx->stmt(0)).as<stmt_node *>());
+
+    if (auto else_stmt = ctx->stmt(1)) {
+      result->else_body.reset(visit(else_stmt).as<stmt_node *>());
+    }
+
+    return dynamic_cast<stmt_node *>(result);
 
   } else if (auto while_stmt = ctx->While()) {
     if (JJY_DEBUG)
@@ -420,8 +443,34 @@ antlrcpp::Any AstBuilder::visitCond(SafeCParser::CondContext *ctx) {
   // TODO: Cond
   //
   // cond: exp;
+  //
+  // struct cond_node : expr_node {
+  //   RelOp op;
+  //   ptr<expr_node> lhs, rhs;
+  //   virtual void accept(AstNode_Visitor &visitor) override;
+  // };
+  auto result = new cond_node;
 
-  return visit(ctx->exp());
+  auto exp = ctx->exp();
+
+  auto exp_result = visit(exp).as<expr_node *>();
+
+  result->line = exp_result->line;
+  result->pos = exp_result->pos;
+
+
+
+
+
+
+
+
+
+  
+
+
+
+  return dynamic_cast<expr_node *>(result);
 }
 
 antlrcpp::Any AstBuilder::visitLval(SafeCParser::LvalContext *ctx) {
