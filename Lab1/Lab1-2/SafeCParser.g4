@@ -63,6 +63,7 @@ blockItem: decl | stmt;
 
 stmt: 
     block
+    | lval Assign exp SemiColon
     | SemiColon
     | exp SemiColon
     | If LeftParen cond RightParen stmt (Else stmt)?
@@ -78,8 +79,8 @@ lval: Identifier | (Identifier LeftBracket exp RightBracket) | (Identifier LeftP
 number: IntConst;
 // 数字
 
-exp: lval Assign exp
-    | lval
+exp:
+    lval
     | number
     | LeftParen exp RightParen
     | exp (Plus | Minus | Multiply | Divide | Modulo) exp

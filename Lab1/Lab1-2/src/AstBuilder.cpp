@@ -1,7 +1,25 @@
 
 #include "AstBuilder.h"
+#include "AstNode.h"
+#include <exception>
+#include <iostream>
+#include <typeinfo>
 #define JJY_DEBUG 1
 #define JJY_DEBUG_SIGN "[j] "
+
+// void checkType(Base *basePtr) {
+//   try {
+//     std::cout << "Actual type: " << typeid(*basePtr).name() << std::endl;
+//     Derived *derivedPtr = dynamic_cast<Derived *>(basePtr);
+//     if (derivedPtr) {
+//       std::cout << "Successfully cast to Derived" << std::endl;
+//     } else {
+//       std::cout << "Failed to cast to Derived" << std::endl;
+//     }
+//   } catch (const std::bad_cast &e) {
+//     std::cerr << "bad_cast caught: " << e.what() << std::endl;
+//   }
+// }
 
 namespace antlrcpp {
 antlrcpp::Any AstBuilder::visitCompUnit(SafeCParser::CompUnitContext *ctx) {
@@ -341,7 +359,14 @@ antlrcpp::Any AstBuilder::visitBlock(SafeCParser::BlockContext *ctx) {
   result->pos = ctx->getStart()->getCharPositionInLine();
 
   for (auto block_item : ctx->blockItem()) {
-    auto block_item_n = visit(block_item).as<stmt_node *>();
+    stmt_node *block_item_n;
+    auto block_item_stmt = block_item->stmt();
+    if (block_item_stmt != nullptr && block_item_stmt->block() != nullptr) {
+      block_item_n =
+          dynamic_cast<stmt_node *>(visit(block_item).as<block_node *>());
+    } else {
+      block_item_n = visit(block_item).as<stmt_node *>();
+    }
     result->body.push_back(ptr<stmt_node>(block_item_n));
   }
   return dynamic_cast<block_node *>(result);
@@ -376,15 +401,27 @@ antlrcpp::Any AstBuilder::visitStmt(SafeCParser::StmtContext *ctx) {
   //     | exp SemiColon
   //     | If LeftParen cond RightParen stmt (Else stmt)?
   //     | While LeftParen cond RightParen stmt;
+  if (ctx->Assign()) {
+    if (JJY_DEBUG)
+      printf("%s %s [info] Assign\n", JJY_DEBUG_SIGN, __func__);
 
+    // 赋值表达式: lval = exp
+    auto result = new assign_stmt_node;
+    result->line = ctx->getStart()->getLine();
+    result->pos = ctx->getStart()->getCharPositionInLine();
+    result->target.reset(visit(ctx->lval()).as<lval_node *>());
+    result->value.reset(visit(ctx->exp()).as<expr_node *>());
+    return dynamic_cast<stmt_node *>(result);
+  }
   if (auto block = ctx->block()) {
     if (JJY_DEBUG)
       printf("%s %s [info] Stmt block\n", JJY_DEBUG_SIGN, __func__);
     return visit(block);
   } else if (ctx->isEmpty()) {
     if (JJY_DEBUG)
-      printf("%s %s [info] Stmt SemiColon\n", JJY_DEBUG_SIGN, __func__);
-    return visit(ctx->SemiColon());
+      printf("%s %s [info] Stmt Empty\n", JJY_DEBUG_SIGN, __func__);
+    auto result = new empty_stmt_node;
+    return dynamic_cast<stmt_node *>(result);
   } else if (auto exp = ctx->exp()) {
     if (JJY_DEBUG)
       printf("%s %s [info] Stmt exp\n", JJY_DEBUG_SIGN, __func__);
@@ -392,11 +429,49 @@ antlrcpp::Any AstBuilder::visitStmt(SafeCParser::StmtContext *ctx) {
   } else if (auto if_stmt = ctx->If()) {
     if (JJY_DEBUG)
       printf("%s %s [info] Stmt If\n", JJY_DEBUG_SIGN, __func__);
-    return visit(if_stmt);
+
+    auto result = new if_stmt_node;
+    result->line = ctx->getStart()->getLine();
+    result->pos = ctx->getStart()->getCharPositionInLine();
+    result->cond.reset(visit(ctx->cond()).as<cond_node *>());
+
+    // FIX: auto 的全面删除
+    block_node *if_body;
+    if_body = visit(ctx->stmt(0)).as<block_node *>();
+
+    result->if_body.reset(dynamic_cast<stmt_node *>(if_body));
+
+    if (auto stmt = ctx->stmt(1)) {
+      block_node *else_body;
+      if (JJY_DEBUG)
+        printf("%s %s [info] Stmt Else\n", JJY_DEBUG_SIGN, __func__);
+      if (stmt->If()) {
+        if (JJY_DEBUG)
+          printf("%s %s [info] Stmt Else If\n", JJY_DEBUG_SIGN, __func__);
+        result->else_body.reset(visit(stmt).as<stmt_node *>());
+      } else {
+        else_body = visit(stmt).as<block_node *>();
+        result->else_body.reset(dynamic_cast<stmt_node *>(else_body));
+      }
+    }
+
+    // result->else_body.reset(visit(ctx->stmt(1)).as<stmt_node *>());
+
+    // XXXX: if_stmt_node
+    return dynamic_cast<stmt_node *>(result);
+    // return result;
+
   } else if (auto while_stmt = ctx->While()) {
     if (JJY_DEBUG)
       printf("%s %s [info] Stmt While\n", JJY_DEBUG_SIGN, __func__);
-    return visit(while_stmt);
+    auto result = new while_stmt_node;
+
+    result->line = ctx->getStart()->getLine();
+    result->pos = ctx->getStart()->getCharPositionInLine();
+    result->cond.reset(visit(ctx->cond()).as<cond_node *>());
+    result->body.reset(visit(ctx->stmt(0)).as<block_node *>());
+
+    return dynamic_cast<stmt_node *>(result);
   } else {
     assert(0 && "Unknown Stmt.");
   }
@@ -427,23 +502,31 @@ antlrcpp::Any AstBuilder::visitLval(SafeCParser::LvalContext *ctx) {
   //   ptr<expr_node> array_index;
   //   virtual void accept(AstNode_Visitor &visitor) override;
   // };
+  if (ctx->LeftParen() && ctx->RightParen()) {
+    if (JJY_DEBUG)
+      printf("%s %s [info] func_call_stmt_node\n", JJY_DEBUG_SIGN, __func__);
+    auto result = new func_call_stmt_node;
+    result->line = ctx->getStart()->getLine();
+    result->pos = ctx->getStart()->getCharPositionInLine();
+    result->name = ctx->Identifier()->getText();
+    return dynamic_cast<stmt_node *>(result);
+  } else {
+    auto result = new lval_node;
+    result->line = ctx->getStart()->getLine();
+    result->pos = ctx->getStart()->getCharPositionInLine();
+    result->name = ctx->Identifier()->getText();
 
-  auto result = new lval_node;
+    if (JJY_DEBUG)
+      printf("%s %s [info] %s %d %d\n", JJY_DEBUG_SIGN, __func__,
+             result->name.c_str(), result->line, result->pos);
 
-  result->line = ctx->getStart()->getLine();
-  result->pos = ctx->getStart()->getCharPositionInLine();
+    if (auto exp = ctx->exp()) {
+      result->array_index.reset(visit(exp).as<expr_node *>());
+    }
 
-  result->name = ctx->Identifier()->getText();
-
-  if (JJY_DEBUG)
-    printf("%s %s [info] %s %d %d\n", JJY_DEBUG_SIGN, __func__,
-           result->name.c_str(), result->line, result->pos);
-
-  if (auto exp = ctx->exp()) {
-    result->array_index.reset(visit(exp).as<expr_node *>());
+    // return dynamic_cast<expr_node *>(result);
+    return result;
   }
-
-  return dynamic_cast<expr_node *>(result);
 }
 
 antlrcpp::Any AstBuilder::visitNumber(SafeCParser::NumberContext *ctx) {
@@ -464,6 +547,9 @@ antlrcpp::Any AstBuilder::visitNumber(SafeCParser::NumberContext *ctx) {
     // Dec
     result->number = std::stoi(num_str, 0, 10);
   }
+  if (JJY_DEBUG)
+    printf("%s %s [info] %d %d\n", JJY_DEBUG_SIGN, __func__, result->number,
+           result->line);
   return dynamic_cast<expr_node *>(result);
 }
 
@@ -473,6 +559,7 @@ antlrcpp::Any AstBuilder::visitExp(SafeCParser::ExpContext *ctx) {
   }
 
   // XXXX:有大问题啊这里的解析逻辑
+  // XXXX:这里有进入多分支的风险，记得改
 
   // exp: lval Assign exp
   //     | lval
@@ -484,84 +571,140 @@ antlrcpp::Any AstBuilder::visitExp(SafeCParser::ExpContext *ctx) {
   //     exp;
   auto exps = ctx->exp();
 
-  if (ctx->Assign()) {
-    // 赋值表达式: lval = exp
-    auto result = new assign_stmt_node;
-    result->line = ctx->getStart()->getLine();
-    result->pos = ctx->getStart()->getCharPositionInLine();
-    result->target.reset(visit(ctx->lval()).as<lval_node *>());
-    result->value.reset(visit(exps[0]).as<expr_node *>());
-    return dynamic_cast<stmt_node *>(result);
-  }
+  // if(JJY_DEBUG)
+  //   printf("%s %s [info] ctx->Assign()=%d\n", JJY_DEBUG_SIGN, __func__,
+  //   ctx->Assign());
 
   if (ctx->lval()) {
+    if (JJY_DEBUG)
+      printf("%s %s [info] lval\n", JJY_DEBUG_SIGN, __func__);
     // 左值: lval
-    return visit(ctx->lval());
-  }
+    if (ctx->lval()->RightParen() && ctx->lval()->LeftParen()) {
+      return visit(ctx->lval());
+    } else {
+      auto result = new lval_node;
+      result = visit(ctx->lval()).as<lval_node *>();
 
-  if (ctx->number()) {
+      return dynamic_cast<expr_node *>(result);
+    }
+  } else if (ctx->number()) {
+    if (JJY_DEBUG)
+      printf("%s %s [info] number\n", JJY_DEBUG_SIGN, __func__);
     // 数字: number
     return visit(ctx->number());
   }
 
-  if (ctx->LeftParen() && ctx->Identifier()) {
-    // 函数调用: Identifier (exp, exp, ...)
-    auto result = new func_call_expr_node;
-    result->line = ctx->getStart()->getLine();
-    result->pos = ctx->getStart()->getCharPositionInLine();
-    result->func_name = ctx->Identifier()->getText();
+  // else if (ctx->LeftParen() && ctx->Identifier()) {
+  //   // 函数调用: Identifier (exp, exp, ...)
+  //   auto result = new func_call_expr_node;
+  //   result->line = ctx->getStart()->getLine();
+  //   result->pos = ctx->getStart()->getCharPositionInLine();
+  //   result->func_name = ctx->Identifier()->getText();
 
-    for (auto arg : exps) {
-      result->args.push_back(ptr<expr_node>(visit(arg).as<expr_node *>()));
-    }
+  //   for (auto arg : exps) {
+  //     result->args.push_back(ptr<expr_node>(visit(arg).as<expr_node *>()));
+  //   }
 
-    return dynamic_cast<expr_node *>(result);
-  }
+  //   return dynamic_cast<expr_node *>(result);
+  // }
 
-  if (ctx->LeftParen()) {
+  else if (ctx->LeftParen() && ctx->RightParen()) {
+    if (JJY_DEBUG)
+      printf("%s %s [info] (exp)\n", JJY_DEBUG_SIGN, __func__);
     // 括号表达式: (exp)
-    return visit(exps[0]);
+    return visit(exps[0]).as<expr_node *>();
   }
 
-  if (exps.size() == 2) {
+  else if (exps.size() == 2) {
     // 二元运算: exp (op) exp
-    auto result = new binop_expr_node;
-    result->line = ctx->getStart()->getLine();
-    result->pos = ctx->getStart()->getCharPositionInLine();
+    bool is_bin_op = ctx->Plus() || ctx->Minus() || ctx->Multiply() ||
+                     ctx->Divide() || ctx->Modulo();
+    bool is_rel_op = ctx->Equal() || ctx->NonEqual() || ctx->Less() ||
+                     ctx->LessEqual() || ctx->Greater() || ctx->GreaterEqual();
+    if (is_bin_op) {
+      if (JJY_DEBUG)
+        printf("%s %s [info] BinOp\n", JJY_DEBUG_SIGN, __func__);
+      auto result = new binop_expr_node;
+      result->line = ctx->getStart()->getLine();
+      result->pos = ctx->getStart()->getCharPositionInLine();
+      if (ctx->Plus()) {
+        result->op = BinOp::PLUS;
+      } else if (ctx->Minus()) {
+        result->op = BinOp::MINUS;
+      } else if (ctx->Multiply()) {
+        result->op = BinOp::MULTIPLY;
+      } else if (ctx->Divide()) {
+        result->op = BinOp::DIVIDE;
+      } else if (ctx->Modulo()) {
+        result->op = BinOp::MODULO;
+      } else {
+        assert(0 && "Unknown binary operator in exp");
+      }
 
-    if (ctx->Plus()) {
-      result->op = BinOp::PLUS;
-    } else if (ctx->Minus()) {
-      result->op = BinOp::MINUS;
-    } else if (ctx->Multiply()) {
-      result->op = BinOp::MULTIPLY;
-    } else if (ctx->Divide()) {
-      result->op = BinOp::DIVIDE;
-    } else if (ctx->Modulo()) {
-      result->op = BinOp::MODULO;
-    } else if (ctx->Equal()) {
-      result->op = RelOp::EQUAL;
-    } else if (ctx->NonEqual()) {
-      result->op = RelOp::NON_EQUAL;
-    } else if (ctx->Less()) {
-      result->op = RelOp::LESS;
-    } else if (ctx->LessEqual()) {
-      result->op = RelOp::LESS_EQUAL;
-    } else if (ctx->Greater()) {
-      result->op = RelOp::GREATER;
-    } else if (ctx->GreaterEqual()) {
-      result->op = RelOp::GREATER_EQUAL;
-    } else {
-      assert(0 && "Unknown binary operator in exp");
+      if (JJY_DEBUG)
+        printf("%s %s [info] BinOp = %d\n", JJY_DEBUG_SIGN, __func__,
+               result->op);
+
+      // auto exp_1_is_lval = exps[0]->lval();
+      // auto exp_2_is_lval = exps[1]->lval();
+      // if (exp_1_is_lval) {
+      //   if (JJY_DEBUG)
+      //     printf("%s %s [info] Binof exp_1_is_lval\n", JJY_DEBUG_SIGN,
+      //            __func__);
+      //   result->lhs.reset(
+      //       dynamic_cast<expr_node *>(visit(exps[0]).as<lval_node *>()));
+      // } else {
+      //   result->lhs.reset(visit(exps[0]).as<expr_node *>());
+      // }
+      // if (exp_2_is_lval) {
+      //   if (JJY_DEBUG)
+      //     printf("%s %s [info] Binof exp_2_is_lval\n", JJY_DEBUG_SIGN,
+      //            __func__);
+      //   result->rhs.reset(
+      //       dynamic_cast<expr_node *>(visit(exps[1]).as<lval_node *>()));
+      // } else {
+      //   result->rhs.reset(visit(exps[1]).as<expr_node *>());
+      // }
+      result->lhs.reset(visit(exps[0]).as<expr_node *>());
+      if (JJY_DEBUG)
+        printf("%s %s [info] after exp0 cast\n", JJY_DEBUG_SIGN, __func__);
+      result->rhs.reset(visit(exps[1]).as<expr_node *>());
+      if (JJY_DEBUG)
+        printf("%s %s [info] after exp1 cast\n", JJY_DEBUG_SIGN, __func__);
+
+      return dynamic_cast<expr_node *>(result);
+    } else if (is_rel_op) {
+      if (JJY_DEBUG)
+        printf("%s %s [info] RelOp\n", JJY_DEBUG_SIGN, __func__);
+      auto result = new cond_node;
+      result->line = ctx->getStart()->getLine();
+      result->pos = ctx->getStart()->getCharPositionInLine();
+      if (ctx->Equal()) {
+        result->op = RelOp::EQUAL;
+      } else if (ctx->NonEqual()) {
+        result->op = RelOp::NON_EQUAL;
+      } else if (ctx->Less()) {
+        result->op = RelOp::LESS;
+      } else if (ctx->LessEqual()) {
+        result->op = RelOp::LESS_EQUAL;
+      } else if (ctx->Greater()) {
+        result->op = RelOp::GREATER;
+      } else if (ctx->GreaterEqual()) {
+        result->op = RelOp::GREATER_EQUAL;
+      } else {
+        assert(0 && "Unknown binary operator in exp");
+      }
+
+      result->lhs.reset(visit(exps[0]).as<expr_node *>());
+      result->rhs.reset(visit(exps[1]).as<expr_node *>());
+
+      return result;
     }
-
-    result->lhs.reset(visit(exps[0]).as<expr_node *>());
-    result->rhs.reset(visit(exps[1]).as<expr_node *>());
-
-    return dynamic_cast<expr_node *>(result);
   }
 
-  if (exps.size() == 1) {
+  else if (exps.size() == 1) {
+    if (JJY_DEBUG)
+      printf("%s %s [info] UnaryOp\n", JJY_DEBUG_SIGN, __func__);
     // 一元运算: (op) exp
     auto result = new unaryop_expr_node;
     result->line = ctx->getStart()->getLine();
