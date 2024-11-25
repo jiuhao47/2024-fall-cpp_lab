@@ -33,3 +33,5 @@
     - 修改了visitExp函数，新增了对函数调用的识别与处理，完善了类型判断逻辑。着重修改了一元运算，未测试。Done by Cilrag
 - 2024-11-23 
     - Lab1-2所有测试点通过。Done by jiuhao
+- 2024-11-25
+    - TODO: 本地运行部署。 need to be done by Cilrag
