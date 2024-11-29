@@ -35,3 +35,5 @@
     - Lab1-2所有测试点通过。Done by jiuhao
 - 2024-11-25
     - TODO: 本地运行部署。 need to be done by Cilrag
+- 2024-11-29
+    - TODO: 实验报告部分撰写，见doc/section/s1.tex
