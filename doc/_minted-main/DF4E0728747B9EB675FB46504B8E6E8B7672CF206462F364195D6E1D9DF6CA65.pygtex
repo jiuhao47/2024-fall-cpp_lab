@@ -1,0 +1,8 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{n}{antlrcpp}\PYG{o}{::}\PYG{n}{Any}\PYG{+w}{ }\PYG{n+nf}{AstBuilder::visitConstDef}\PYG{p}{(}\PYG{n}{SafeCParser}\PYG{o}{::}\PYG{n}{ConstDefContext}\PYG{+w}{ }\PYG{o}{*}\PYG{n}{ctx}\PYG{p}{)\PYGZob{}}
+\PYG{+w}{  }\PYG{c+cm}{/* 前文省略 */}
+\PYG{+w}{  }\PYG{n}{result}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{n}{btype}\PYG{+w}{ }\PYG{o}{=}\PYG{+w}{ }\PYG{n}{BType}\PYG{o}{::}\PYG{n}{INT}\PYG{p}{;}
+\PYG{+w}{  }\PYG{c+c1}{// 此字段若不进行赋值，会导致后续在输出抽象语法树时出现Segmentation Fault错误}
+\PYG{+w}{  }\PYG{c+cm}{/* 后文省略 */}
+\PYG{p}{\PYGZcb{}}
+\end{Verbatim}

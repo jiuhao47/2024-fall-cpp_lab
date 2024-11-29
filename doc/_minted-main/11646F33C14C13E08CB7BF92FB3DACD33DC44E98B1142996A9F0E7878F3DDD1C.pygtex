@@ -1,0 +1,17 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{n+nl}{stmt}\PYG{p}{:}
+\PYG{+w}{    }\PYG{n+nv}{block}
+\PYG{+w}{    }\PYG{o}{|}\PYG{+w}{ }\PYG{n+nv}{lval}\PYG{+w}{ }\PYG{n+no}{Assign}\PYG{+w}{ }\PYG{n+nv}{exp}\PYG{+w}{ }\PYG{n+no}{SemiColon}\PYG{+w}{ }\PYG{c}{// 此行为编写AstBuilder.cpp时添加}
+\PYG{+w}{    }\PYG{o}{|}\PYG{+w}{ }\PYG{n+no}{SemiColon}
+\PYG{+w}{    }\PYG{o}{|}\PYG{+w}{ }\PYG{n+nv}{exp}\PYG{+w}{ }\PYG{n+no}{SemiColon}
+\PYG{+w}{    }\PYG{o}{|}\PYG{+w}{ }\PYG{n+no}{If}\PYG{+w}{ }\PYG{n+no}{LeftParen}\PYG{+w}{ }\PYG{n+nv}{cond}\PYG{+w}{ }\PYG{n+no}{RightParen}\PYG{+w}{ }\PYG{n+nv}{stmt}\PYG{+w}{ }\PYG{o}{(}\PYG{n+no}{Else}\PYG{+w}{ }\PYG{n+nv}{stmt}\PYG{o}{)?}
+\PYG{+w}{    }\PYG{o}{|}\PYG{+w}{ }\PYG{n+no}{While}\PYG{+w}{ }\PYG{n+no}{LeftParen}\PYG{+w}{ }\PYG{n+nv}{cond}\PYG{+w}{ }\PYG{n+no}{RightParen}\PYG{+w}{ }\PYG{n+nv}{stmt}\PYG{p}{;}
+\PYG{n+nl}{exp}\PYG{p}{:}
+\PYG{+w}{    }\PYG{n+nv}{lval}
+\PYG{+w}{    }\PYG{o}{|}\PYG{+w}{ }\PYG{n+nv}{lval}\PYG{+w}{ }\PYG{n+no}{Assign}\PYG{+w}{ }\PYG{n+nv}{exp}\PYG{+w}{ }\PYG{c}{// 此行于编写AstBuilder.cpp时删去}
+\PYG{+w}{    }\PYG{o}{|}\PYG{+w}{ }\PYG{n+nv}{number}
+\PYG{+w}{    }\PYG{o}{|}\PYG{+w}{ }\PYG{n+no}{LeftParen}\PYG{+w}{ }\PYG{n+nv}{exp}\PYG{+w}{ }\PYG{n+no}{RightParen}
+\PYG{+w}{    }\PYG{o}{|}\PYG{+w}{ }\PYG{n+nv}{exp}\PYG{+w}{ }\PYG{o}{(}\PYG{n+no}{Plus}\PYG{+w}{ }\PYG{o}{|}\PYG{+w}{ }\PYG{n+no}{Minus}\PYG{+w}{ }\PYG{o}{|}\PYG{+w}{ }\PYG{n+no}{Multiply}\PYG{+w}{ }\PYG{o}{|}\PYG{+w}{ }\PYG{n+no}{Divide}\PYG{+w}{ }\PYG{o}{|}\PYG{+w}{ }\PYG{n+no}{Modulo}\PYG{o}{)}\PYG{+w}{ }\PYG{n+nv}{exp}
+\PYG{+w}{    }\PYG{o}{|}\PYG{+w}{ }\PYG{o}{(}\PYG{n+no}{Minus}\PYG{+w}{ }\PYG{o}{|}\PYG{+w}{ }\PYG{n+no}{Plus}\PYG{o}{)}\PYG{+w}{ }\PYG{n+nv}{exp}
+\PYG{+w}{    }\PYG{o}{|}\PYG{+w}{ }\PYG{n+nv}{exp}\PYG{+w}{ }\PYG{o}{(}\PYG{n+no}{Equal}\PYG{+w}{ }\PYG{o}{|}\PYG{+w}{ }\PYG{n+no}{NonEqual}\PYG{+w}{ }\PYG{o}{|}\PYG{+w}{ }\PYG{n+no}{Less}\PYG{+w}{ }\PYG{o}{|}\PYG{+w}{ }\PYG{n+no}{Greater}\PYG{+w}{ }\PYG{o}{|}\PYG{+w}{ }\PYG{n+no}{LessEqual}\PYG{+w}{ }\PYG{o}{|}\PYG{+w}{ }\PYG{n+no}{GreaterEqual}\PYG{o}{)}\PYG{+w}{ }\PYG{n+nv}{exp}\PYG{p}{;}
+\end{Verbatim}

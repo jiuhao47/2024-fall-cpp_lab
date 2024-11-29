@@ -1,0 +1,44 @@
+% !TEX program = xelatex
+% main.tex
+\documentclass[11pt]{article}
+\input{~/personal/document/texbox/.config/config-test.tex}
+\large
+\newcommand{\Institution}{中国科学院大学网络空间安全学院}
+\newcommand{\className}{编译原理}
+\newcommand{\classTeacher}{李孟豪}
+\newcommand{\documentType}{实验报告}
+\newcommand{\semester}{2024-2025学年秋季学期}
+\newcommand{\studentName}{姜俊彦}
+\newcommand{\studentNumber}{2022K8009970011}
+\newcommand{\studentEmail}{jiangjunyan22@mails.ucas.ac.cn}
+
+\newcommand{\groupStudentName}{刘镇豪}
+\newcommand{\groupStudentNumber}{2022K8009929027}
+\newcommand{\groupStudentEmail}{liuzhenhao22@mails.ucas.ac.cn}
+
+\setlength{\headheight}{14pt}
+\pagestyle{fancy}
+\lhead{\semester}
+\chead{\className}
+\rhead{\classTeacher}
+
+\begin{document}
+
+\begin{center}
+	\huge \Institution
+
+	\className
+
+	\LARGE \documentType
+
+  \large \kaishu \studentName\footnote{学号：\studentNumber，邮箱：\studentEmail},\groupStudentName\footnote{学号：\groupStudentNumber，邮箱：\groupStudentEmail}
+\end{center}
+
+\tableofcontents
+
+\newpage
+
+\subfile{./section/s1.tex}
+
+
+\end{document}

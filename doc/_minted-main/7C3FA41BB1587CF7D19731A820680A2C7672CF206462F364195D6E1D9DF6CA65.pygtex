@@ -1,0 +1,9 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{n}{antlrcpp}\PYG{o}{::}\PYG{n}{Any}\PYG{+w}{ }\PYG{n+nf}{AstBuilder::visitNumber}\PYG{p}{(}\PYG{n}{SafeCParser}\PYG{o}{::}\PYG{n}{NumberContext}\PYG{+w}{ }\PYG{o}{*}\PYG{n}{ctx}\PYG{p}{)}\PYG{+w}{ }\PYG{p}{\PYGZob{}}
+\PYG{+w}{  }\PYG{k}{auto}\PYG{+w}{ }\PYG{n}{result}\PYG{+w}{ }\PYG{o}{=}\PYG{+w}{ }\PYG{k}{new}\PYG{+w}{ }\PYG{n}{number\PYGZus{}node}\PYG{p}{;}
+\PYG{+w}{  }\PYG{c+cm}{/* 略去其它代码 */}
+\PYG{+w}{  }\PYG{c+c1}{// return result;}
+\PYG{+w}{  }\PYG{c+c1}{// 需要进行正确的类型转换（子类到父类的转换）}
+\PYG{+w}{  }\PYG{k}{return}\PYG{+w}{ }\PYG{k}{dynamic\PYGZus{}cast}\PYG{o}{\PYGZlt{}}\PYG{n}{expr\PYGZus{}node}\PYG{+w}{ }\PYG{o}{*\PYGZgt{}}\PYG{p}{(}\PYG{n}{result}\PYG{p}{);}
+\PYG{p}{\PYGZcb{}}
+\end{Verbatim}
