@@ -1,0 +1,5 @@
+#!/bin/sh
+find "./tests" -type f | while read file; do 
+  echo "Processing file: $file" 
+  ./build/irbuilder $file
+done
