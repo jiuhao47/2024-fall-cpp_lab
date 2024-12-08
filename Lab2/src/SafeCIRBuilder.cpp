@@ -1,18 +1,22 @@
 #include "SafeCIRBuilder.h"
 #include "Utils.h"
+#include <llvm-15/llvm/IR/Value.h>
 
 // For lval and rval identification.
 // Expect the function f to return an rval.
+// 期望f返回一个右值类型
 #define EXPECT_RVAL(f)                                                         \
   val_type_stack.push(FLAG::RVAL);                                             \
   f;                                                                           \
   val_type_stack.pop();
 // Expect the function f to return an lval.
+// 期望f返回一个左值类型
 #define EXPECT_LVAL(f)                                                         \
   val_type_stack.push(FLAG::LVAL);                                             \
   f;                                                                           \
   val_type_stack.pop();
 // Is current expected to return an lval.
+// 当前期望返回一个左值类型
 #define IS_EXPECT_LVAL() val_type_stack.top() == FLAG::LVAL
 
 SafeCIRBuilder::SafeCIRBuilder(llvm::LLVMContext &ctx)
@@ -218,6 +222,125 @@ void SafeCIRBuilder::visit(binop_expr_node &node) {
      binary op: for example: "a+1" -> %res = add %a, 1; set_value_result(res)
           for example: "a+b" -> %res = add %a, %b; set_value_result(res)
   */
+  bool op1_is_const = false;
+  bool op2_is_const = false;
+  int op1_int = 0;
+  int op2_int = 0;
+  llvm::Value *op1_value;
+  llvm::Value *op2_value;
+
+  node.lhs->accept(*this);
+  if (!get_int_result(op1_int)) {
+    op1_is_const = false;
+    if (!get_value_result(&op1_value)) {
+      std::cerr << node.line << ":" << node.pos
+                << ": left operand of binary operator must be a constant or a "
+                   "variable"
+                << std::endl;
+      error_flag = true;
+      return;
+    } else {
+      if (JJY_DEBUG_IR) {
+        printf("%s %s binop_expr_node: op1 is not const\n", JJY_DEBUG_SIGN,
+               __func__);
+      }
+    }
+  } else {
+    op1_is_const = true;
+    if (JJY_DEBUG_IR) {
+      printf("%s %s binop_expr_node: op1 is const = %d\n", JJY_DEBUG_SIGN,
+             __func__, op1_int);
+    }
+  }
+
+  node.rhs->accept(*this);
+  if (!get_int_result(op2_int)) {
+    op2_is_const = false;
+    if (!get_value_result(&op2_value)) {
+      std::cerr << node.line << ":" << node.pos
+                << ": right operand of binary operator must be a constant or a "
+                   "variable"
+                << std::endl;
+      error_flag = true;
+      return;
+    } else {
+      if (JJY_DEBUG_IR) {
+        printf("%s %s binop_expr_node: op2 is not const\n", JJY_DEBUG_SIGN,
+               __func__);
+      }
+    }
+  } else {
+    op2_is_const = true;
+    if (JJY_DEBUG_IR) {
+      printf("%s %s binop_expr_node: op2 is const = %d\n", JJY_DEBUG_SIGN,
+             __func__, op2_int);
+    }
+  }
+
+  if (op1_is_const && op2_is_const) {
+    // both are constant
+    switch (node.op) {
+    case BinOp::PLUS:
+      set_int_result(op1_int + op2_int);
+      break;
+    case BinOp::MINUS:
+      set_int_result(op1_int - op2_int);
+      break;
+    case BinOp::MULTIPLY:
+      set_int_result(op1_int * op2_int);
+      break;
+    case BinOp::DIVIDE:
+      set_int_result(op1_int / op2_int);
+      break;
+    case BinOp::MODULO:
+      set_int_result(op1_int % op2_int);
+      break;
+    default:
+      std::cerr << node.line << ":" << node.pos << ": unknown binary operator"
+                << std::endl;
+      error_flag = true;
+      return;
+    }
+  } else {
+    // not both are constant
+    //  2. If lhs and rhs are not both constant, build an instruction for the
+    // binary op: for example: "a+1" -> %res = add %a, 1; set_value_result(res)
+    //      for example: "a+b" -> %res = add %a, %b; set_value_result(res)
+
+    llvm::Value *res;
+    switch (node.op) {
+    case BinOp::PLUS:
+      res = builder.CreateAdd(
+          op1_is_const ? builder.getInt32(op1_int) : op1_value,
+          op2_is_const ? builder.getInt32(op2_int) : op2_value);
+      break;
+    case BinOp::MINUS:
+      res = builder.CreateSub(
+          op1_is_const ? builder.getInt32(op1_int) : op1_value,
+          op2_is_const ? builder.getInt32(op2_int) : op2_value);
+      break;
+    case BinOp::MULTIPLY:
+      res = builder.CreateMul(
+          op1_is_const ? builder.getInt32(op1_int) : op1_value,
+          op2_is_const ? builder.getInt32(op2_int) : op2_value);
+      break;
+    case BinOp::DIVIDE:
+      res = builder.CreateSDiv(
+          op1_is_const ? builder.getInt32(op1_int) : op1_value,
+          op2_is_const ? builder.getInt32(op2_int) : op2_value);
+      break;
+    case BinOp::MODULO:
+      res = builder.CreateSRem(
+          op1_is_const ? builder.getInt32(op1_int) : op1_value,
+          op2_is_const ? builder.getInt32(op2_int) : op2_value);
+      break;
+    default:
+      std::cerr << node.line << ":" << node.pos << ": unknown binary operator"
+                << std::endl;
+      error_flag = true;
+      return;
+    }
+  }
 }
 
 void SafeCIRBuilder::visit(unaryop_expr_node &node) {
@@ -225,6 +348,26 @@ void SafeCIRBuilder::visit(unaryop_expr_node &node) {
     printf("%s %s unaryop_expr_node\n", JJY_DEBUG_SIGN, __func__);
   }
   // TODO: handle unary operation.
+
+  // struct unaryop_expr_node : expr_node {
+  //     UnaryOp op;
+  //     ptr<expr_node> rhs;
+  //     virtual void accept(AstNode_Visitor& visitor) override;
+  // };
+
+  switch (node.op) {
+  case UnaryOp::PLUS:
+    node.rhs->accept(*this);
+    break;
+  case UnaryOp::MINUS:
+    node.rhs->accept(*this);
+    break;
+  default:
+    std::cerr << node.line << ":" << node.pos << ": unknown unary operator"
+              << std::endl;
+    error_flag = true;
+    return;
+  }
 }
 
 void SafeCIRBuilder::visit(lval_node &node) {
@@ -246,9 +389,9 @@ void SafeCIRBuilder::visit(lval_node &node) {
      lval is expected, we can directly return the lval of the variable: for
      example: in "%a = 1" and we are visiting "%a", we can return the
      llvm::Value* of %a. If rval is expected, we need to load the value of the
-     variable and return the loaded value. for example: in "1 + *%a" and we are
-     visiting "%a", we need to return the loaded value of %a, create "%tmp =
-     load %a" and then set_value_result(%tmp).
+     variable and return the loaded value. for example: in "1 + *%a" and we
+     are visiting "%a", we need to return the loaded value of %a, create "%tmp
+     = load %a" and then set_value_result(%tmp).
   */
 
   if (!var_info.is_array) {
@@ -279,18 +422,83 @@ void SafeCIRBuilder::visit(var_def_node &node) {
   if (cur_scope == FLAG::GLOBAL_SCOPE) { // global define
     llvm::GlobalVariable *global_variable;
 
-    if (!array_length) { // not an array
-                         // TODO: create and declare global scalar
-    } else {             // is an array
-                         // TODO: create and declare global array
+    if (!array_length) {
+      if (JJY_DEBUG_IR) {
+        printf("%s %s var_def_node: global not array\n", JJY_DEBUG_SIGN,
+               __func__);
+      }
+      // not an array
+      // TODO: create and declare global scalar
+      global_variable = new llvm::GlobalVariable(
+          *module, llvm::Type::getInt32Ty(context), is_const,
+          llvm::GlobalValue::LinkageTypes::ExternalLinkage, nullptr, name);
+      declare_variable(name, global_variable, is_const, false, is_obc, 0);
+    } else {
+      if (JJY_DEBUG_IR) {
+        printf("%s %s var_def_node: global is array\n", JJY_DEBUG_SIGN,
+               __func__);
+      }
+      // is an array
+      // TODO: create and declare global array
     }
   } else { // local define
     llvm::Value *local_variable;
 
-    if (!array_length) { // not an array
-                         // TODO: create and declare local scalar
-    } else {             // is an array
-                         // TODO: create and declare local array
+    if (!array_length) {
+      if (JJY_DEBUG_IR) {
+        printf("%s %s var_def_node: local not array\n", JJY_DEBUG_SIGN,
+               __func__);
+      }
+      // not an array
+      // TODO: create and declare local scalar
+    } else {
+      if (JJY_DEBUG_IR) {
+        printf("%s %s var_def_node: local is array\n", JJY_DEBUG_SIGN,
+               __func__);
+      }
+      // is an array
+      // TODO: create and declare local array
+
+      // get array length
+
+      EXPECT_RVAL(array_length->accept(*this));
+      int length;
+      // length can be a expression
+      if (!get_int_result(length)) {
+        std::cerr << node.line << ":" << node.pos
+                  << ": array length must be a constant" << std::endl;
+        error_flag = true;
+        return;
+      }
+
+      llvm::ArrayType *array_type =
+          llvm::ArrayType::get(llvm::Type::getInt32Ty(context), length);
+      local_variable = builder.CreateAlloca(array_type, nullptr, name);
+      declare_variable(name, local_variable, is_const, true, is_obc, length);
+
+      // Initialize
+      if (initializers.size() > length) {
+        std::cerr << node.line << ":" << node.pos
+                  << ": too many initializers for array '" << name << "'"
+                  << std::endl;
+        error_flag = true;
+        return;
+      }
+      for (int i = 0; i < initializers.size(); i++) {
+        llvm::Value *index = builder.getInt32(i);
+        llvm::Value *element_ptr = builder.CreateGEP(
+            local_variable->getType()->getPointerElementType(), local_variable,
+            {builder.getInt32(0), index});
+        EXPECT_RVAL(initializers[i]->accept(*this));
+        llvm::Value *value;
+        if (!get_result_as_value(&value)) {
+          std::cerr << node.line << ":" << node.pos
+                    << ": initializer must be a constant" << std::endl;
+          error_flag = true;
+          return;
+        }
+        builder.CreateStore(value, element_ptr);
+      }
     }
   }
 }
@@ -389,9 +597,17 @@ SafeCIRBuilder::VarInfo SafeCIRBuilder::lookup_variable(std::string name) {
   }
   // TODO: find the nearest decalred variable `name`
 
+  for (auto it = scoped_variables.rbegin(); it != scoped_variables.rend();
+       ++it) {
+    if (it->variable_map.count(name)) {
+      return it->variable_map[name];
+    }
+  }
+
   return VarInfo(); // Return an invalid VarInfo if `name` not found.
 }
 
+// 在当前作用域声明一个变量
 bool SafeCIRBuilder::declare_variable(std::string name, llvm::Value *var_ptr,
                                       bool is_const, bool is_array, bool is_obc,
                                       int array_length) {
@@ -405,6 +621,7 @@ bool SafeCIRBuilder::declare_variable(std::string name, llvm::Value *var_ptr,
   return true;
 }
 
+// 把某个值存到int_result中，并设置has_int_result为true
 void SafeCIRBuilder::set_int_result(int val) {
   if (JJY_DEBUG_IR) {
     printf("%s %s\n", JJY_DEBUG_SIGN, __func__);
@@ -413,6 +630,7 @@ void SafeCIRBuilder::set_int_result(int val) {
   int_result = val;
 }
 
+// 从int_result中取值，如果has_int_result为true，则返回true，否则返回false
 bool SafeCIRBuilder::get_int_result(int &val) {
   if (JJY_DEBUG_IR) {
     printf("%s %s\n", JJY_DEBUG_SIGN, __func__);
@@ -426,6 +644,7 @@ bool SafeCIRBuilder::get_int_result(int &val) {
   }
 }
 
+// 把某个值存到value_result中，并设置has_value_result为true
 void SafeCIRBuilder::set_value_result(llvm::Value *val) {
   if (JJY_DEBUG_IR) {
     printf("%s %s\n", JJY_DEBUG_SIGN, __func__);
@@ -434,6 +653,7 @@ void SafeCIRBuilder::set_value_result(llvm::Value *val) {
   value_result = val;
 }
 
+// 从value_result中取值，如果has_value_result为true，则返回true，否则返回false
 bool SafeCIRBuilder::get_value_result(llvm::Value **val) {
   if (JJY_DEBUG_IR) {
     printf("%s %s\n", JJY_DEBUG_SIGN, __func__);
@@ -447,6 +667,8 @@ bool SafeCIRBuilder::get_value_result(llvm::Value **val) {
   }
 }
 
+// 取value result或int result，如果value result存在，则返回true, 或者int
+// result存在，则返回true，否则返回false
 bool SafeCIRBuilder::get_result_as_value(llvm::Value **val) {
   if (JJY_DEBUG_IR) {
     printf("%s %s\n", JJY_DEBUG_SIGN, __func__);
