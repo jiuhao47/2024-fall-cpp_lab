@@ -1,3 +1,4 @@
+
 #include "AstBuilder.h"
 #include "AstNode.h"
 #include "Utils.h"
@@ -209,7 +210,13 @@ antlrcpp::Any AstBuilder::visitVarDef(SafeCParser::VarDefContext *ctx) {
   }
   if (auto array = ctx->array()) {
     // TODO: Array
-    return visit(array);
+    auto result = visit(array).as<var_def_node *>();
+    for (auto exp : ctx->exp()) {
+      result->initializers.push_back(
+          ptr<expr_node>(visit(exp).as<expr_node *>()));
+    }
+    return result;
+    // XXXX: HERE need to add a initializers
   } else if (ctx->Identifier()) {
     // TODO: Scalar
 
@@ -294,6 +301,15 @@ antlrcpp::Any AstBuilder::visitUnobcArray(SafeCParser::UnobcArrayContext *ctx) {
   // TODO: UnobcArray
   //
   // unobcArray: Identifier LeftBracket (exp)? RightBracket;
+  // struct var_def_node : stmt_node {
+  //     bool is_const;
+  //     BType btype;
+  //     std::string name;
+  //     bool is_obc;
+  //     ptr<expr_node> array_length;
+  //     ptr_vector<expr_node> initializers;
+  //     virtual void accept(AstNode_Visitor& visitor) override;
+  // };
   if (JJY_DEBUG_AST) {
     printf("%s visitUnobcArray\n", JJY_DEBUG_SIGN);
   }
@@ -373,8 +389,7 @@ antlrcpp::Any AstBuilder::visitStmt(SafeCParser::StmtContext *ctx) {
     result->target.reset(visit(ctx->lval()).as<lval_node *>());
     result->value.reset(visit(ctx->exp()).as<expr_node *>());
     return dynamic_cast<stmt_node *>(result);
-  }
-  if (auto block = ctx->block()) {
+  } else if (auto block = ctx->block()) {
     if (JJY_DEBUG_AST)
       printf("%s %s [info] Stmt block\n", JJY_DEBUG_SIGN, __func__);
     return visit(block);
@@ -425,6 +440,12 @@ antlrcpp::Any AstBuilder::visitStmt(SafeCParser::StmtContext *ctx) {
     result->body.reset(visit(ctx->stmt(0)).as<block_node *>());
 
     return dynamic_cast<stmt_node *>(result);
+  } else if (ctx->LeftParen() && ctx->RightParen()) {
+    auto result = new func_call_stmt_node;
+    result->line = ctx->getStart()->getLine();
+    result->pos = ctx->getStart()->getCharPositionInLine();
+    result->name = ctx->Identifier()->getText();
+    return dynamic_cast<stmt_node *>(result);
   } else {
     assert(0 && "Unknown Stmt.");
   }
@@ -454,31 +475,31 @@ antlrcpp::Any AstBuilder::visitLval(SafeCParser::LvalContext *ctx) {
   if (JJY_DEBUG_AST) {
     printf("%s visitLval\n", JJY_DEBUG_SIGN);
   }
-  if (ctx->LeftParen() && ctx->RightParen()) {
-    if (JJY_DEBUG_AST)
-      printf("%s %s [info] func_call_stmt_node\n", JJY_DEBUG_SIGN, __func__);
-    auto result = new func_call_stmt_node;
-    result->line = ctx->getStart()->getLine();
-    result->pos = ctx->getStart()->getCharPositionInLine();
-    result->name = ctx->Identifier()->getText();
-    return dynamic_cast<stmt_node *>(result);
-  } else {
-    auto result = new lval_node;
-    result->line = ctx->getStart()->getLine();
-    result->pos = ctx->getStart()->getCharPositionInLine();
-    result->name = ctx->Identifier()->getText();
+  // if (ctx->LeftParen() && ctx->RightParen()) {
+  //   if (JJY_DEBUG_AST)
+  //     printf("%s %s [info] func_call_stmt_node\n", JJY_DEBUG_SIGN, __func__);
+  //   auto result = new func_call_stmt_node;
+  //   result->line = ctx->getStart()->getLine();
+  //   result->pos = ctx->getStart()->getCharPositionInLine();
+  //   result->name = ctx->Identifier()->getText();
+  //   return dynamic_cast<stmt_node *>(result);
+  // } else {
+  auto result = new lval_node;
+  result->line = ctx->getStart()->getLine();
+  result->pos = ctx->getStart()->getCharPositionInLine();
+  result->name = ctx->Identifier()->getText();
 
-    if (JJY_DEBUG_AST)
-      printf("%s %s [info] %s %d %d\n", JJY_DEBUG_SIGN, __func__,
-             result->name.c_str(), result->line, result->pos);
+  if (JJY_DEBUG_AST)
+    printf("%s %s [info] %s %d %d\n", JJY_DEBUG_SIGN, __func__,
+           result->name.c_str(), result->line, result->pos);
 
-    if (auto exp = ctx->exp()) {
-      result->array_index.reset(visit(exp).as<expr_node *>());
-    }
-
-    // return dynamic_cast<expr_node *>(result);
-    return result;
+  if (auto exp = ctx->exp()) {
+    result->array_index.reset(visit(exp).as<expr_node *>());
   }
+
+  // return dynamic_cast<expr_node *>(result);
+  return result;
+  // }
 }
 
 antlrcpp::Any AstBuilder::visitNumber(SafeCParser::NumberContext *ctx) {
@@ -521,15 +542,10 @@ antlrcpp::Any AstBuilder::visitExp(SafeCParser::ExpContext *ctx) {
   if (ctx->lval()) {
     if (JJY_DEBUG_AST)
       printf("%s %s [info] lval\n", JJY_DEBUG_SIGN, __func__);
-    // 左值: lval
-    if (ctx->lval()->RightParen() && ctx->lval()->LeftParen()) {
-      return visit(ctx->lval());
-    } else {
-      auto result = new lval_node;
-      result = visit(ctx->lval()).as<lval_node *>();
+    auto result = new lval_node;
+    result = visit(ctx->lval()).as<lval_node *>();
 
-      return dynamic_cast<expr_node *>(result);
-    }
+    return dynamic_cast<expr_node *>(result);
   } else if (ctx->number()) {
     if (JJY_DEBUG_AST)
       printf("%s %s [info] number\n", JJY_DEBUG_SIGN, __func__);

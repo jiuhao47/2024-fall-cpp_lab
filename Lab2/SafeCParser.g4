@@ -67,13 +67,14 @@ stmt:
     | SemiColon
     | exp SemiColon
     | If LeftParen cond RightParen stmt (Else stmt)?
-    | While LeftParen cond RightParen stmt;
+    | While LeftParen cond RightParen stmt
+    | Identifier LeftParen RightParen SemiColon;
 // 语句
 
 cond: exp;
 // 条件
 
-lval: Identifier | (Identifier LeftBracket exp RightBracket) | (Identifier LeftParen RightParen );
+lval: Identifier | (Identifier LeftBracket exp RightBracket);
 // 左值
 
 number: IntConst;
@@ -83,7 +84,8 @@ exp:
     lval
     | number
     | LeftParen exp RightParen
-    | exp (Plus | Minus | Multiply | Divide | Modulo) exp
     | (Minus | Plus) exp
+    | exp (Multiply | Divide | Modulo) exp
+    | exp (Plus | Minus) exp
     | exp (Equal | NonEqual | Less | Greater | LessEqual | GreaterEqual) exp;
 // 表达式

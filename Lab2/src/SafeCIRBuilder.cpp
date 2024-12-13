@@ -1,7 +1,7 @@
 #include "SafeCIRBuilder.h"
 #include "Utils.h"
 #include <llvm-15/llvm/IR/Value.h>
-
+void printType(llvm::Type *type);
 // For lval and rval identification.
 // Expect the function f to return an rval.
 // 期望f返回一个右值类型
@@ -27,7 +27,8 @@ SafeCIRBuilder::~SafeCIRBuilder() {}
 void SafeCIRBuilder::obc_check(llvm::Value *index, int array_length,
                                int node_line, int node_pos, std::string name) {
   if (JJY_DEBUG_IR) {
-    printf("%s %s", JJY_DEBUG_SIGN, __func__);
+    printf("%s %s %s %d %d %d\n", JJY_DEBUG_SIGN, __func__, name.c_str(),
+           node_line, node_pos, array_length);
   }
   // Insert code to check if index is in [0, length).
   // If not in range, call obc_check_error to report error.
@@ -42,6 +43,71 @@ void SafeCIRBuilder::obc_check(llvm::Value *index, int array_length,
   //          ... (next insert point here)
 
   // TODO: Implement.
+
+  // Create basic blocks
+  llvm::Function *function = builder.GetInsertBlock()->getParent();
+  llvm::BasicBlock *check_fail_bb =
+      llvm::BasicBlock::Create(context, "check_fail", function);
+  llvm::BasicBlock *check_success_bb =
+      llvm::BasicBlock::Create(context, "check_success", function);
+
+  // Create cmp
+  llvm::Value *cmp = builder.CreateOr(
+      builder.CreateICmpSLT(index, builder.getInt32(0)),
+      builder.CreateICmpSGE(index, builder.getInt32(array_length)));
+
+  // Create br
+  builder.CreateCondBr(cmp, check_fail_bb, check_success_bb);
+
+  // Insert code to check_fail_bb
+  // check_fail function should print
+  // "Runtime Error: array '%s' out of bound check error at Line:%d Pos:%d"
+  function->getBasicBlockList().push_back(check_fail_bb);
+  builder.SetInsertPoint(check_fail_bb);
+  llvm::Function *check_err = functions["obc_check_error"];
+  llvm::Value *arg0_val =
+      llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), node_line);
+  llvm::Value *arg1_val =
+      llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), node_pos);
+  llvm::Value *arg2_val = llvm::ConstantDataArray::getString(context, name);
+  llvm::Value *arg0_ptr = lookup_variable("arg0").val_ptr;
+  llvm::Value *arg1_ptr = lookup_variable("arg1").val_ptr;
+  llvm::Value *arg2_ptr = lookup_variable("arg2").val_ptr;
+  builder.CreateStore(arg0_val, arg0_ptr);
+  builder.CreateStore(arg1_val, arg1_ptr);
+  builder.CreateStore(arg2_val, arg2_ptr);
+  // Create a format string for the error message
+  llvm::Value *format_str = llvm::ConstantDataArray::getString(
+      context,
+      "Runtime Error: array '%s' out of bound check error at Line:%d Pos:%d");
+
+  // Create a global variable to hold the format string
+  llvm::GlobalVariable *format_str_var = new llvm::GlobalVariable(
+      *module, format_str->getType(), true, llvm::GlobalValue::PrivateLinkage,
+      llvm::cast<llvm::Constant>(format_str), "format_str");
+
+  // Get a pointer to the format string
+  llvm::Value *format_str_ptr = builder.CreatePointerCast(
+      format_str_var, llvm::Type::getInt8PtrTy(context));
+
+  // Create a call to printf with the format string and arguments
+  llvm::Function *printf_func = module->getFunction("printf");
+  // if (!printf_func) {
+  //   llvm::FunctionType *printf_type =
+  //       llvm::FunctionType::get(llvm::Type::getInt32Ty(context),
+  //                               llvm::Type::getInt8PtrTy(context), true);
+
+  //   llvm::Function *printf_func = llvm::Function::Create(
+  //       printf_type, llvm::Function::ExternalLinkage, 0, "printf", module);
+  // }
+  builder.CreateCall(printf_func,
+                     {format_str_ptr, arg2_val, arg0_val, arg1_val});
+  builder.CreateCall(check_err, {});
+  builder.CreateRetVoid();
+
+  // Insert code to check_success_bb
+  function->getBasicBlockList().push_back(check_success_bb);
+  builder.SetInsertPoint(check_success_bb);
 
   /*
       // Call obc_check_error to report error:
@@ -355,18 +421,66 @@ void SafeCIRBuilder::visit(unaryop_expr_node &node) {
   //     virtual void accept(AstNode_Visitor& visitor) override;
   // };
 
-  switch (node.op) {
-  case UnaryOp::PLUS:
-    node.rhs->accept(*this);
-    break;
-  case UnaryOp::MINUS:
-    node.rhs->accept(*this);
-    break;
-  default:
-    std::cerr << node.line << ":" << node.pos << ": unknown unary operator"
-              << std::endl;
-    error_flag = true;
-    return;
+  bool op1_is_const = false;
+  int op1_int = 0;
+  llvm::Value *op1_value;
+
+  node.rhs->accept(*this);
+  if (!get_int_result(op1_int)) {
+    op1_is_const = false;
+    if (!get_value_result(&op1_value)) {
+      std::cerr << node.line << ":" << node.pos
+                << ": operand of unary operator must be a constant or a "
+                   "variable"
+                << std::endl;
+      error_flag = true;
+      return;
+    } else {
+      if (JJY_DEBUG_IR) {
+        printf("%s %s unaryop_expr_node: op1 is not const\n", JJY_DEBUG_SIGN,
+               __func__);
+      }
+    }
+  } else {
+    op1_is_const = true;
+    if (JJY_DEBUG_IR) {
+      printf("%s %s unaryop_expr_node: op1 is const = %d\n", JJY_DEBUG_SIGN,
+             __func__, op1_int);
+    }
+  }
+
+  if (op1_is_const) {
+    // op1 is constant
+    switch (node.op) {
+    case UnaryOp::MINUS:
+      set_int_result(-op1_int);
+      break;
+    case UnaryOp::PLUS:
+      set_int_result(op1_int);
+      break;
+    default:
+      std::cerr << node.line << ":" << node.pos << ": unknown unary operator"
+                << std::endl;
+      error_flag = true;
+      return;
+    }
+  } else {
+    // op1 is not constant
+
+    llvm::Value *res;
+    switch (node.op) {
+    case UnaryOp::MINUS:
+      set_value_result(builder.CreateNeg(op1_value));
+      break;
+    case UnaryOp::PLUS:
+      set_value_result(op1_value);
+      break;
+    default:
+      std::cerr << node.line << ":" << node.pos << ": unknown unary operator"
+                << std::endl;
+      error_flag = true;
+      return;
+    }
   }
 }
 
@@ -374,6 +488,22 @@ void SafeCIRBuilder::visit(lval_node &node) {
   if (JJY_DEBUG_IR) {
     printf("%s %s lval_node\n", JJY_DEBUG_SIGN, __func__);
   }
+  // struct VarInfo {
+  //     llvm::Value* val_ptr;
+  //     bool is_const;
+  //     bool is_array;
+  //     bool is_obc;
+  //     int array_length;
+  //     VarInfo(llvm::Value* val_ptr, bool is_const, bool is_array, bool
+  //     is_obc, int array_length)
+  //         : val_ptr(val_ptr), is_const(is_const), is_array(is_array),
+  //         is_obc(is_obc),
+  //           array_length(array_length) {};
+  //     VarInfo() : val_ptr(nullptr), is_const(false), is_array(false),
+  //     is_obc(false),
+  //                 array_length(0) {};
+  //     bool is_valid() { return val_ptr != nullptr; };
+  // };
   auto name = node.name;
   VarInfo var_info = lookup_variable(name);
   if (!var_info.is_valid()) {
@@ -381,6 +511,11 @@ void SafeCIRBuilder::visit(lval_node &node) {
               << "' is not declared" << std::endl;
     error_flag = true;
     return;
+  }
+  if (JJY_DEBUG_IR) {
+    // name
+    printf("%s %s lval_node: name = %s\n", JJY_DEBUG_SIGN, __func__,
+           name.c_str());
   }
 
   /*
@@ -399,12 +534,107 @@ void SafeCIRBuilder::visit(lval_node &node) {
       printf("%s %s lval_node: not array\n", JJY_DEBUG_SIGN, __func__);
     }
     // TODO: handle scalar lval
+
+    if (IS_EXPECT_LVAL()) {
+      if (JJY_DEBUG_IR) {
+        printf("%s %s lval_node: not array, expect lval\n", JJY_DEBUG_SIGN,
+               __func__);
+        printType(var_info.val_ptr->getType());
+      }
+      set_value_result(var_info.val_ptr);
+
+    } else {
+      llvm::Type *type = var_info.val_ptr->getType();
+      llvm::Value *loaded_val =
+          builder.CreateLoad(type, var_info.val_ptr, name);
+      set_value_result(loaded_val);
+    }
+
   } else {
     if (JJY_DEBUG_IR) {
       printf("%s %s lval_node: is_array\n", JJY_DEBUG_SIGN, __func__);
     }
     // TODO: handle array lval and call obc_check to insert obc check code for
     // obc array.
+
+    if (IS_EXPECT_LVAL()) {
+      if (JJY_DEBUG_IR) {
+        printf("%s %s lval_node: is_array, expect lval\n", JJY_DEBUG_SIGN,
+               __func__);
+      }
+      // this is an array need index
+      // node.array_index
+      if (!node.array_index) {
+        std::cerr << node.line << ":" << node.pos
+                  << ": array index must be provided" << std::endl;
+        error_flag = true;
+        return;
+      }
+      node.array_index->accept(*this);
+      int index;
+      llvm::Value *index_value;
+      if (!get_int_result(index)) {
+        if (!get_value_result(&index_value)) {
+          std::cerr << node.line << ":" << node.pos
+                    << ": array index must be a constant or exp" << std::endl;
+          error_flag = true;
+          return;
+        } else {
+          if (JJY_DEBUG_IR) {
+            printf(
+                "%s %s lval_node: is_array, expect lval, index is variable\n",
+                JJY_DEBUG_SIGN, __func__);
+          }
+          // index is a variable
+          // TODO:
+          // check if index is in [0, length)
+          // insert the call
+          obc_check(index_value, var_info.array_length, node.line, node.pos,
+                    name);
+
+          // load the index_value
+          llvm::Value *index_val = builder.CreateLoad(
+              llvm::Type::getInt32Ty(context), index_value, name);
+          // get array element
+          llvm::Value *element_ptr = builder.CreateGEP(
+              llvm::ArrayType::get(llvm::Type::getInt32Ty(context),
+                                   var_info.array_length),
+              var_info.val_ptr, {builder.getInt32(0), index_val});
+          // need to get the value of the element
+
+          llvm::Value *element_value = builder.CreateLoad(
+              llvm::Type::getInt32Ty(context), element_ptr, name);
+          set_value_result(element_value);
+        }
+      } else {
+        // index is a constant
+        if (index < 0 || index >= var_info.array_length) {
+          std::cerr << node.line << ":" << node.pos
+                    << ": array index out of bound" << std::endl;
+          error_flag = true;
+          return;
+        } else {
+          // index is in [0, length)
+          obc_check(index_value, var_info.array_length, node.line, node.pos,
+                    name);
+
+          // get array element
+          llvm::Value *index_val =
+              llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), index);
+          llvm::Value *element_ptr = builder.CreateGEP(
+              llvm::ArrayType::get(llvm::Type::getInt32Ty(context),
+                                   var_info.array_length),
+              var_info.val_ptr, {builder.getInt32(0), index_val});
+          // need to get the value of the element
+          //
+          llvm::Value *element_value = builder.CreateLoad(
+              llvm::Type::getInt32Ty(context), element_ptr, name);
+          set_value_result(element_value);
+        }
+      }
+
+    } else {
+    }
     return;
   }
 }
@@ -461,20 +691,18 @@ void SafeCIRBuilder::visit(var_def_node &node) {
 
       // get array length
 
-      EXPECT_RVAL(array_length->accept(*this));
       int length;
-      // length can be a expression
+      // XXXX: length can be a expression
+      array_length->accept(*this);
       if (!get_int_result(length)) {
         std::cerr << node.line << ":" << node.pos
                   << ": array length must be a constant" << std::endl;
         error_flag = true;
         return;
       }
-
       llvm::ArrayType *array_type =
           llvm::ArrayType::get(llvm::Type::getInt32Ty(context), length);
       local_variable = builder.CreateAlloca(array_type, nullptr, name);
-      declare_variable(name, local_variable, is_const, true, is_obc, length);
 
       // Initialize
       if (initializers.size() > length) {
@@ -483,21 +711,36 @@ void SafeCIRBuilder::visit(var_def_node &node) {
                   << std::endl;
         error_flag = true;
         return;
-      }
-      for (int i = 0; i < initializers.size(); i++) {
-        llvm::Value *index = builder.getInt32(i);
-        llvm::Value *element_ptr = builder.CreateGEP(
-            local_variable->getType()->getPointerElementType(), local_variable,
-            {builder.getInt32(0), index});
-        EXPECT_RVAL(initializers[i]->accept(*this));
-        llvm::Value *value;
-        if (!get_result_as_value(&value)) {
-          std::cerr << node.line << ":" << node.pos
-                    << ": initializer must be a constant" << std::endl;
-          error_flag = true;
-          return;
+      } else {
+        if (JJY_DEBUG_IR) {
+          printf("%s %s var_def_node: local is array, init size = %ld\n",
+                 JJY_DEBUG_SIGN, __func__, initializers.size());
         }
-        builder.CreateStore(value, element_ptr);
+        for (size_t i = 0; i < length; ++i) {
+          if (i < initializers.size()) {
+            int init_value;
+            initializers[i]->accept(*this);
+            if (!get_int_result(init_value)) {
+              std::cerr << node.line << ":" << node.pos
+                        << ": array initializer must be a constant"
+                        << std::endl;
+              error_flag = true;
+              return;
+            }
+            llvm::Value *index =
+                llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), i);
+            llvm::Value *element_ptr = builder.CreateGEP(
+                array_type, local_variable, {builder.getInt32(0), index});
+            builder.CreateStore(builder.getInt32(init_value), element_ptr);
+          } else {
+            llvm::Value *index =
+                llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), i);
+            llvm::Value *element_ptr = builder.CreateGEP(
+                array_type, local_variable, {builder.getInt32(0), index});
+            builder.CreateStore(builder.getInt32(0), element_ptr);
+          }
+        }
+        declare_variable(name, local_variable, is_const, true, is_obc, length);
       }
     }
   }
@@ -508,6 +751,36 @@ void SafeCIRBuilder::visit(assign_stmt_node &node) {
     printf("%s %s assign_stmt_node\n", JJY_DEBUG_SIGN, __func__);
   }
   // TODO: get target's rval and store at value's lval.
+  //
+  // struct assign_stmt_node : stmt_node {
+  //     ptr<lval_node> target;
+  //     ptr<expr_node> value;
+  //     virtual void accept(AstNode_Visitor& visitor) override;
+  // };
+
+  EXPECT_LVAL(node.target->accept(*this));
+  llvm::Value *target;
+  if (!get_value_result(&target)) {
+    std::cerr << node.line << ":" << node.pos
+              << ": left operand of assignment must be a variable" << std::endl;
+    error_flag = true;
+    return;
+  }
+
+  EXPECT_LVAL(node.value->accept(*this));
+
+  llvm::Value *value;
+  // expr_node
+  if (!get_value_result(&value)) {
+    std::cerr << node.line << ":" << node.pos
+              << ": right operand of assignment must be a constant or a "
+                 "variable"
+              << std::endl;
+    error_flag = true;
+    return;
+  }
+
+  builder.CreateStore(value, target);
 }
 
 void SafeCIRBuilder::visit(if_stmt_node &node) {
@@ -684,4 +957,10 @@ bool SafeCIRBuilder::get_result_as_value(llvm::Value **val) {
   } else {
     return false;
   }
+}
+void printType(llvm::Type *type) {
+  std::string type_str;
+  llvm::raw_string_ostream rso(type_str);
+  type->print(rso);
+  std::cout << "Type: " << rso.str() << std::endl;
 }
