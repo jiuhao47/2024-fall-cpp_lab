@@ -42,9 +42,6 @@ void SafeCIRBuilder::obc_check(llvm::Value *index, int array_length,
   //      check_success bb:
   //          ... (next insert point here)
 
-  // TODO: Implement.
-  // 如果他是变量，则需要加载，如果是常量，我该怎么办
-
   // Create basic blocks
   llvm::Function *function = builder.GetInsertBlock()->getParent();
   llvm::BasicBlock *check_fail_bb =
@@ -570,11 +567,15 @@ void SafeCIRBuilder::visit(lval_node &node) {
           // check if index is in [0, length)
           // insert the call
 
-          // obc_check(index_value, var_info.array_length, node.line, node.pos,
-          //           name);
+          // load the index_value
+          if (var_info.is_obc) {
+            llvm::Value *index_val_for_check = builder.CreateLoad(
+                llvm::Type::getInt32Ty(context), index_value, name);
+            obc_check(index_val_for_check, var_info.array_length, node.line,
+                      node.pos, name);
+          }
           llvm::Value *index_val = builder.CreateLoad(
               llvm::Type::getInt32Ty(context), index_value, name);
-          // load the index_value
           // get array element
           llvm::Value *element_ptr = builder.CreateGEP(
               llvm::ArrayType::get(llvm::Type::getInt32Ty(context),
@@ -594,14 +595,16 @@ void SafeCIRBuilder::visit(lval_node &node) {
           error_flag = true;
           return;
         } else {
+
           // index is in [0, length)
 
           // get array element
-
           llvm::Value *index_val =
               llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), index);
-          obc_check(index_val, var_info.array_length, node.line, node.pos,
-                    name);
+          if (var_info.is_obc) {
+            obc_check(index_val, var_info.array_length, node.line, node.pos,
+                      name);
+          }
           llvm::Value *element_ptr = builder.CreateGEP(
               llvm::ArrayType::get(llvm::Type::getInt32Ty(context),
                                    var_info.array_length),
