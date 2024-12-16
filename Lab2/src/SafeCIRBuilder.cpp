@@ -383,6 +383,7 @@ void SafeCIRBuilder::visit(binop_expr_node &node) {
       error_flag = true;
       return;
     }
+    set_value_result(res);
   }
 }
 
@@ -516,7 +517,6 @@ void SafeCIRBuilder::visit(lval_node &node) {
       if (JJY_DEBUG_IR) {
         printf("%s %s lval_node: not array, expect lval\n", JJY_DEBUG_SIGN,
                __func__);
-        printType(var_info.val_ptr->getType());
       }
       set_value_result(var_info.val_ptr);
 
@@ -641,19 +641,88 @@ void SafeCIRBuilder::visit(var_def_node &node) {
         printf("%s %s var_def_node: global not array\n", JJY_DEBUG_SIGN,
                __func__);
       }
-      // not an array
+      // not an global array
       // TODO: create and declare global scalar
       global_variable = new llvm::GlobalVariable(
           *module, llvm::Type::getInt32Ty(context), is_const,
           llvm::GlobalValue::LinkageTypes::ExternalLinkage, nullptr, name);
+
+      if (initializers.size() > 0) {
+        int init_value;
+        initializers[0]->accept(*this);
+        if (!get_int_result(init_value)) {
+          std::cerr << node.line << ":" << node.pos
+                    << ": initializer must be a constant" << std::endl;
+          error_flag = true;
+          return;
+        }
+        global_variable->setInitializer(llvm::ConstantInt::get(
+            llvm::Type::getInt32Ty(context), init_value));
+      }
       declare_variable(name, global_variable, is_const, false, is_obc, 0);
     } else {
       if (JJY_DEBUG_IR) {
         printf("%s %s var_def_node: global is array\n", JJY_DEBUG_SIGN,
                __func__);
       }
-      // is an array
+      // is an global array
       // TODO: create and declare global array
+
+      // get array length
+      int length;
+      // XXXX: length can be a expression
+      array_length->accept(*this);
+      if (!get_int_result(length)) {
+        std::cerr << node.line << ":" << node.pos
+                  << ": array length must be a constant" << std::endl;
+        error_flag = true;
+        return;
+      }
+      llvm::ArrayType *array_type =
+          llvm::ArrayType::get(llvm::Type::getInt32Ty(context), length);
+      global_variable = new llvm::GlobalVariable(
+          *module, array_type, is_const,
+          llvm::GlobalValue::LinkageTypes::ExternalLinkage, nullptr, name);
+
+      // Initialize
+
+      if (initializers.size() > length) {
+        std::cerr << node.line << ":" << node.pos
+                  << ": too many initializers for array '" << name << "'"
+                  << std::endl;
+        error_flag = true;
+        return;
+      } else {
+        if (JJY_DEBUG_IR) {
+          printf("%s %s var_def_node: global is array, init size = %ld\n",
+                 JJY_DEBUG_SIGN, __func__, initializers.size());
+        }
+        for (size_t i = 0; i < length; ++i) {
+          if (i < initializers.size()) {
+            int init_value;
+            initializers[i]->accept(*this);
+            if (!get_int_result(init_value)) {
+              std::cerr << node.line << ":" << node.pos
+                        << ": array initializer must be a constant"
+                        << std::endl;
+              error_flag = true;
+              return;
+            }
+            llvm::Value *index =
+                llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), i);
+            llvm::Value *element_ptr = builder.CreateGEP(
+                array_type, global_variable, {builder.getInt32(0), index});
+            builder.CreateStore(builder.getInt32(init_value), element_ptr);
+          } else {
+            llvm::Value *index =
+                llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), i);
+            llvm::Value *element_ptr = builder.CreateGEP(
+                array_type, global_variable, {builder.getInt32(0), index});
+            builder.CreateStore(builder.getInt32(0), element_ptr);
+          }
+        }
+        declare_variable(name, global_variable, is_const, true, is_obc, length);
+      }
     }
   } else { // local define
     llvm::Value *local_variable;
@@ -663,8 +732,23 @@ void SafeCIRBuilder::visit(var_def_node &node) {
         printf("%s %s var_def_node: local not array\n", JJY_DEBUG_SIGN,
                __func__);
       }
-      // not an array
+      // not an local array
       // TODO: create and declare local scalar
+      local_variable =
+          builder.CreateAlloca(llvm::Type::getInt32Ty(context), nullptr, name);
+
+      if (initializers.size() > 0) {
+        int init_value;
+        initializers[0]->accept(*this);
+        if (!get_int_result(init_value)) {
+          std::cerr << node.line << ":" << node.pos
+                    << ": initializer must be a constant" << std::endl;
+          error_flag = true;
+          return;
+        }
+        builder.CreateStore(builder.getInt32(init_value), local_variable);
+      }
+      declare_variable(name, local_variable, is_const, false, is_obc, 0);
     } else {
       if (JJY_DEBUG_IR) {
         printf("%s %s var_def_node: local is array\n", JJY_DEBUG_SIGN,
@@ -753,18 +837,23 @@ void SafeCIRBuilder::visit(assign_stmt_node &node) {
 
   EXPECT_LVAL(node.value->accept(*this));
 
-  llvm::Value *value;
+  llvm::Value *assign_value;
+  int assign_int;
   // expr_node
-  if (!get_value_result(&value)) {
-    std::cerr << node.line << ":" << node.pos
-              << ": right operand of assignment must be a constant or a "
-                 "variable"
-              << std::endl;
-    error_flag = true;
-    return;
+  if (!get_int_result(assign_int)) {
+    if (!get_value_result(&assign_value)) {
+      std::cerr << node.line << ":" << node.pos
+                << ": right operand of assignment must be a constant or a "
+                   "variable"
+                << std::endl;
+      error_flag = true;
+      return;
+    }
+  } else {
+    assign_value = builder.getInt32(assign_int);
   }
 
-  builder.CreateStore(value, target);
+  builder.CreateStore(assign_value, target);
 }
 
 void SafeCIRBuilder::visit(if_stmt_node &node) {

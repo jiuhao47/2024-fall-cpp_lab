@@ -72,7 +72,6 @@ stmt:
 // 语句
 
 cond: exp;
-// cond: exp (Equal | NonEqual | Less | Greater | LessEqual | GreaterEqual) exp;
 // 条件
 
 lval: Identifier | (Identifier LeftBracket exp RightBracket);
@@ -81,17 +80,12 @@ lval: Identifier | (Identifier LeftBracket exp RightBracket);
 number: IntConst;
 // 数字
 
-// exp:
-//     lval
-//     | number
-//     | LeftParen exp RightParen
-//     | exp (Plus | Minus | Multiply | Divide | Modulo) exp
-//     | (Minus | Plus) exp;
 exp:
     lval
     | number
     | LeftParen exp RightParen
-    | exp (Plus | Minus | Multiply | Divide | Modulo) exp
     | (Minus | Plus) exp
+    | exp (Multiply | Divide | Modulo) exp
+    | exp (Plus | Minus) exp
     | exp (Equal | NonEqual | Less | Greater | LessEqual | GreaterEqual) exp;
 // 表达式

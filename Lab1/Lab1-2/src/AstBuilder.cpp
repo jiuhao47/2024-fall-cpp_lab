@@ -146,7 +146,20 @@ antlrcpp::Any AstBuilder::visitConstDef(SafeCParser::ConstDefContext *ctx) {
 
   if (auto array = ctx->array()) {
     // TODO: Array
-    return visit(array);
+    auto result = visit(array).as<var_def_node *>();
+    for (auto exp : ctx->exp()) {
+      result->initializers.push_back(
+          ptr<expr_node>(visit(exp).as<expr_node *>()));
+    }
+    if (result->array_length == nullptr) {
+      auto array_length = new number_node;
+      array_length->btype = BType::INT;
+      array_length->line = ctx->getStart()->getLine();
+      array_length->pos = ctx->getStart()->getCharPositionInLine();
+      array_length->number = result->initializers.size();
+      result->array_length.reset(array_length);
+    }
+    return result;
   } else if (ctx->Identifier()) {
     // TODO: Scalar
     result->name = ctx->Identifier()->getText();
@@ -214,6 +227,14 @@ antlrcpp::Any AstBuilder::visitVarDef(SafeCParser::VarDefContext *ctx) {
     for (auto exp : ctx->exp()) {
       result->initializers.push_back(
           ptr<expr_node>(visit(exp).as<expr_node *>()));
+    }
+    if (result->array_length == nullptr) {
+      auto array_length = new number_node;
+      array_length->btype = BType::INT;
+      array_length->line = ctx->getStart()->getLine();
+      array_length->pos = ctx->getStart()->getCharPositionInLine();
+      array_length->number = result->initializers.size();
+      result->array_length.reset(array_length);
     }
     return result;
     // XXXX: HERE need to add a initializers
