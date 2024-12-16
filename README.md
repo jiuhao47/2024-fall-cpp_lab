@@ -40,3 +40,4 @@
 - 2024-12-16
     - 实验报告Lab1部分撰写完成 Done by Cilrag
     - 修改意见第一版，见doc/section/s1.tex Done by jiuhao
+    - s1.tex第一版完成，见doc/section/s1.tex Done by Cilrag
