@@ -52,7 +52,20 @@
 
 \subsubsection{函数定义（funcDef）}
 
-% TODO:
+函数定义的语法规则定义了函数的结构，包括返回类型、函数名、参数列表以及函数体。根据语法规则，函数定义的语法为：
+
+\[
+\texttt{funcDef} \colon \texttt{Void} \ \texttt{Identifier} \ \texttt{LeftParen} \ \texttt{RightParen} \ \texttt{block}
+\]
+
+其中：
+- \texttt{Void} 表示函数返回类型为 \texttt{void}；
+- \texttt{Identifier} 表示函数的标识符（函数名）；
+- \texttt{LeftParen} 和 \texttt{RightParen} 表示参数列表的左括号和右括号。此处的语法规则表明函数没有参数（即参数列表为空）；
+- \texttt{block} 表示函数的代码块，即函数体，其中包含了函数的执行语句。
+
+因此，函数定义语法规则指定了一个没有参数的 \texttt{void} 类型函数，它的代码块包括该函数的实际操作。
+
 
 \subsubsection{声明 decl}
 
@@ -126,11 +139,33 @@
 
 \subsubsection{块（block）}
 
-% TODO:
+在编程语言中，语句块是由一对大括号包围的一组语句。语句块是程序中的基本组成部分，用于组织一组语句，使它们可以作为一个整体执行。语法规则如下：
+
+\[
+\texttt{block} \colon \texttt{LeftBrace} \ (\texttt{blockItem})^* \ \texttt{RightBrace}
+\]
+
+其中：
+- \texttt{LeftBrace} 和 \texttt{RightBrace} 分别表示语句块的开始和结束；
+- \texttt{blockItem} 表示语句块内的单个语句或声明，可以是声明（\texttt{decl}）或语句（\texttt{stmt}）。
+
+这意味着一个语句块可以包含零个或多个语句或声明。通过这种方式，语句块允许程序结构化地组织代码。
 
 \subsubsection{左值（lval）}
 
-% TODO:
+左值是可以出现在赋值语句中的表达式，它表示一个可以被赋值的变量。左值通常是一个标识符（变量名）或者是数组元素、函数调用等。左值的语法规则如下：
+
+\[
+\texttt{lval} \colon \texttt{Identifier} \mid (\texttt{Identifier} \ \texttt{LeftBracket} \ \texttt{exp} \ \texttt{RightBracket}) \mid (\texttt{Identifier} \ \texttt{LeftParen} \ \texttt{RightParen})
+\]
+
+其中：
+- \texttt{Identifier} 表示一个简单的标识符，即一个变量名；
+- \texttt{(Identifier LeftBracket exp RightBracket)} 表示数组元素的访问，\texttt{exp} 表示数组索引的表达式；
+- \texttt{(Identifier LeftParen RightParen)} 表示函数调用，它也是一种左值，尽管它通常是一个表达式的返回值，但在本语法中我们允许将其作为左值出现在赋值语句中。
+
+例如，对于表达式 \texttt{a = 10;} 中，\texttt{a} 是左值；在表达式 \texttt{a[5] = 10;} 中，\texttt{a[5]} 也是一个左值，因为它表示数组 \texttt{a} 中索引为 \texttt{5} 的元素。对于 \texttt{func()} 作为左值的情况，可以理解为函数返回的结果被赋值。
+
 
 \subsubsection{表达式（exp）}
 
