@@ -43,6 +43,7 @@ void SafeCIRBuilder::obc_check(llvm::Value *index, int array_length,
   //          ... (next insert point here)
 
   // TODO: Implement.
+  // 如果他是变量，则需要加载，如果是常量，我该怎么办
 
   // Create basic blocks
   llvm::Function *function = builder.GetInsertBlock()->getParent();
@@ -52,62 +53,21 @@ void SafeCIRBuilder::obc_check(llvm::Value *index, int array_length,
       llvm::BasicBlock::Create(context, "check_success", function);
 
   // Create cmp
-  llvm::Value *cmp = builder.CreateOr(
-      builder.CreateICmpSLT(index, builder.getInt32(0)),
-      builder.CreateICmpSGE(index, builder.getInt32(array_length)));
+  // llvm::Value *index_load =
+  //     builder.CreateLoad(llvm::Type::getInt32Ty(context), index, "");
+  // llvm::Value *left = builder.CreateICmpSLT(index_load, builder.getInt32(0));
+  // llvm::Value *right =
+  //     builder.CreateICmpSGE(index_load, builder.getInt32(array_length));
+  // llvm::Value *cmp = builder.CreateOr(left, right);
 
+  // llvm::Value *index_load =
+  //     builder.CreateLoad(llvm::Type::getInt32Ty(context), index, "");
+  llvm::Value *left = builder.CreateICmpSLT(index, builder.getInt32(0));
+  llvm::Value *right =
+      builder.CreateICmpSGE(index, builder.getInt32(array_length));
+  llvm::Value *cmp = builder.CreateOr(left, right);
   // Create br
   builder.CreateCondBr(cmp, check_fail_bb, check_success_bb);
-
-  // Insert code to check_fail_bb
-  // check_fail function should print
-  // "Runtime Error: array '%s' out of bound check error at Line:%d Pos:%d"
-  function->getBasicBlockList().push_back(check_fail_bb);
-  builder.SetInsertPoint(check_fail_bb);
-  llvm::Function *check_err = functions["obc_check_error"];
-  llvm::Value *arg0_val =
-      llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), node_line);
-  llvm::Value *arg1_val =
-      llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), node_pos);
-  llvm::Value *arg2_val = llvm::ConstantDataArray::getString(context, name);
-  llvm::Value *arg0_ptr = lookup_variable("arg0").val_ptr;
-  llvm::Value *arg1_ptr = lookup_variable("arg1").val_ptr;
-  llvm::Value *arg2_ptr = lookup_variable("arg2").val_ptr;
-  builder.CreateStore(arg0_val, arg0_ptr);
-  builder.CreateStore(arg1_val, arg1_ptr);
-  builder.CreateStore(arg2_val, arg2_ptr);
-  // Create a format string for the error message
-  llvm::Value *format_str = llvm::ConstantDataArray::getString(
-      context,
-      "Runtime Error: array '%s' out of bound check error at Line:%d Pos:%d");
-
-  // Create a global variable to hold the format string
-  llvm::GlobalVariable *format_str_var = new llvm::GlobalVariable(
-      *module, format_str->getType(), true, llvm::GlobalValue::PrivateLinkage,
-      llvm::cast<llvm::Constant>(format_str), "format_str");
-
-  // Get a pointer to the format string
-  llvm::Value *format_str_ptr = builder.CreatePointerCast(
-      format_str_var, llvm::Type::getInt8PtrTy(context));
-
-  // Create a call to printf with the format string and arguments
-  llvm::Function *printf_func = module->getFunction("printf");
-  // if (!printf_func) {
-  //   llvm::FunctionType *printf_type =
-  //       llvm::FunctionType::get(llvm::Type::getInt32Ty(context),
-  //                               llvm::Type::getInt8PtrTy(context), true);
-
-  //   llvm::Function *printf_func = llvm::Function::Create(
-  //       printf_type, llvm::Function::ExternalLinkage, 0, "printf", module);
-  // }
-  builder.CreateCall(printf_func,
-                     {format_str_ptr, arg2_val, arg0_val, arg1_val});
-  builder.CreateCall(check_err, {});
-  builder.CreateRetVoid();
-
-  // Insert code to check_success_bb
-  function->getBasicBlockList().push_back(check_success_bb);
-  builder.SetInsertPoint(check_success_bb);
 
   /*
       // Call obc_check_error to report error:
@@ -125,6 +85,26 @@ void SafeCIRBuilder::obc_check(llvm::Value *index, int array_length,
       builder.CreateStore(arg2_val, arg2_ptr);
       builder.CreateCall(check_err, {});
   */
+  function->getBasicBlockList().push_back(check_fail_bb);
+  builder.SetInsertPoint(check_fail_bb);
+  llvm::Value *arg0_val =
+      llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), node_line);
+  llvm::Value *arg1_val =
+      llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), node_pos);
+  llvm::Value *arg2_val = llvm::ConstantDataArray::getString(context, name);
+  llvm::Value *arg0_ptr = lookup_variable("arg0").val_ptr;
+  llvm::Value *arg1_ptr = lookup_variable("arg1").val_ptr;
+  llvm::Value *arg2_ptr = lookup_variable("arg2").val_ptr;
+  llvm::Function *check_err = functions["obc_check_error"];
+  builder.CreateStore(arg0_val, arg0_ptr);
+  builder.CreateStore(arg1_val, arg1_ptr);
+  builder.CreateStore(arg2_val, arg2_ptr);
+  builder.CreateCall(check_err, {});
+  builder.CreateRetVoid();
+
+  // Insert code to check_success_bb
+  function->getBasicBlockList().push_back(check_success_bb);
+  builder.SetInsertPoint(check_success_bb);
 
   return;
 }
@@ -589,12 +569,12 @@ void SafeCIRBuilder::visit(lval_node &node) {
           // TODO:
           // check if index is in [0, length)
           // insert the call
-          obc_check(index_value, var_info.array_length, node.line, node.pos,
-                    name);
 
-          // load the index_value
+          // obc_check(index_value, var_info.array_length, node.line, node.pos,
+          //           name);
           llvm::Value *index_val = builder.CreateLoad(
               llvm::Type::getInt32Ty(context), index_value, name);
+          // load the index_value
           // get array element
           llvm::Value *element_ptr = builder.CreateGEP(
               llvm::ArrayType::get(llvm::Type::getInt32Ty(context),
@@ -615,12 +595,13 @@ void SafeCIRBuilder::visit(lval_node &node) {
           return;
         } else {
           // index is in [0, length)
-          obc_check(index_value, var_info.array_length, node.line, node.pos,
-                    name);
 
           // get array element
+
           llvm::Value *index_val =
               llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), index);
+          obc_check(index_val, var_info.array_length, node.line, node.pos,
+                    name);
           llvm::Value *element_ptr = builder.CreateGEP(
               llvm::ArrayType::get(llvm::Type::getInt32Ty(context),
                                    var_info.array_length),
