@@ -14,11 +14,113 @@
 
 \subsection{文法}
 
-% TODO:
-%
-% 需要Cilrag补全，根据SafeCLexer和SafeCParser
-% 实验中实现的完整文法；
-% 最好是数学环境
+在本实验中，我们设计并实现了一个简单编程语言的词法分析器（Lexer）和语法分析器（Parser），以探讨编译原理中词法分析和语法分析的基本概念。词法分析器负责将源代码分解成词法单元（tokens），语法分析器则根据文法规则检查这些词法单元的顺序是否符合语言的语法结构，并生成语法树（AST）。实验的目标是实现一个简单语言的基本词法分析和语法分析功能，为后续的编译优化与代码生成打下基础。
+
+\subsection{词法分析器（Lexer）}
+
+词法分析器的主要任务是将源代码分解成一系列词法单元。在本实验中，词法单元包括标识符、常量、运算符、分隔符等，具体的词法规则如下：
+
+\begin{itemize}
+	\item 标识符（Identifier）：由字母或下划线开头，后面可以跟字母、数字或下划线，表示变量名、函数名等。
+	\[
+	\text{Identifier} \colon [\_a-zA-Z][a-zA-Z0-9\_]^*
+	\]
+	
+	\item 整数常量（IntConst）：可以是十进制或十六进制表示的数字。
+	\[
+	\text{IntConst} \colon (0x | 0X)[0-9a-fA-F]+ \mid [0-9]+
+	\]
+	
+	\item 关键字和符号：如逗号（`,`）、分号（`;`）、赋值符号（`=`）、括号、运算符等。
+\end{itemize}
+
+词法分析器的任务是扫描源代码并将其分解成这些基本单元，生成一系列的词法单元序列供语法分析器进一步处理。
+
+\subsection{语法分析器（Parser）}
+
+语法分析器的任务是根据给定的文法规则检查词法单元序列是否符合语言的语法结构，并构建语法树（AST）。在本实验中，我们根据词法分析器生成的词法单元，设计了一个符合特定语法规则的语法分析器。以下是语法规则的详细描述。
+
+首先，整个程序的语法结构由多个声明（`decl`）和函数定义（`funcDef`）组成，程序以文件结束符（EOF）结尾。该语法规则可以表示为：
+
+\[
+\text{compUnit} \colon (\text{decl} \mid \text{funcDef})^+ \ \text{EOF}
+\]
+
+其中，`decl` 表示声明，`funcDef` 表示函数定义。
+
+\subsubsection*{声明（`decl`）}
+
+声明分为常量声明（`constDecl`）和变量声明（`varDecl`）。其语法规则为：
+
+\[
+\text{decl} \colon \text{constDecl} \mid \text{varDecl}
+\]
+
+常量声明的语法规则为：
+
+\[
+\text{constDecl} \colon \text{Const} \ \text{bType} \ \text{constDef} \ (\text{Comma} \ \text{constDef})^* \ \text{SemiColon}
+\]
+
+其中，`bType` 表示基本类型（如整数类型），`constDef` 表示常量定义。常量定义的语法规则如下：
+
+\[
+\text{constDef} \colon (\text{Identifier} \mid \text{array}) \ \text{Assign} \ (\text{exp} \mid (\text{LeftBrace} \ \text{exp} (\text{Comma} \ \text{exp})^* \ \text{RightBrace}))
+\]
+
+常量可以是标识符或数组，且必须有一个初始值（可以是单个值或数组）。
+
+变量声明的语法规则为：
+
+\[
+\text{varDecl} \colon \text{bType} \ \text{varDef} \ (\text{Comma} \ \text{varDef})^* \ \text{SemiColon}
+\]
+
+变量定义的语法规则为：
+
+\[
+\text{varDef} \colon (\text{Identifier} \mid \text{array}) \ (\text{Assign} \ (\text{exp} \mid (\text{LeftBrace} \ \text{exp} (\text{Comma} \ \text{exp})^* \ \text{RightBrace})) )?
+\]
+
+其中，变量可以是标识符或数组，并且可以有初始值。
+
+\subsubsection*{数组声明（`array`）}
+
+数组声明有两种形式：OBC 数组和普通数组。OBC 数组的语法规则为：
+
+\[
+\text{obcArray} \colon \text{Obc} \ \text{unobcArray}
+\]
+
+普通数组的语法规则为：
+
+\[
+\text{unobcArray} \colon \text{Identifier} \ \text{LeftBracket} \ (\text{exp})? \ \text{RightBracket}
+\]
+
+其中，`obcArray` 是 `Obc` 类型的数组，`unobcArray` 是普通数组，后者可能包括数组的大小。
+
+\subsubsection*{语句（`stmt`）}
+
+语句的语法规则如下，涵盖了多种语句类型，包括赋值语句、条件语句、循环语句等：
+
+\[
+\text{stmt} \colon \text{block} \mid \text{lval} \ \text{Assign} \ \text{exp} \ \text{SemiColon} \mid \text{SemiColon} \mid \text{exp} \ \text{SemiColon} \mid \text{If} \ \text{LeftParen} \ \text{cond} \ \text{RightParen} \ \text{stmt} (\text{Else} \ \text{stmt})? \mid \text{While} \ \text{LeftParen} \ \text{cond} \ \text{RightParen} \ \text{stmt}
+\]
+
+其中，`block` 是语句块，`lval` 是左值，`exp` 是表达式，`cond` 是条件表达式，`If` 和 `While` 分别表示条件语句和循环语句。`Else` 部分是条件语句的可选部分。
+
+\subsubsection*{表达式（`exp`）}
+
+表达式的语法规则非常重要，它涵盖了变量、常量、运算符等基本构件。表达式的语法规则如下：
+
+\[
+\text{exp} \colon \text{lval} \mid \text{number} \mid \text{LeftParen} \ \text{exp} \ \text{RightParen} \mid \text{exp} \ (\text{Plus} \mid \text{Minus} \mid \text{Multiply} \mid \text{Divide} \mid \text{Modulo}) \ \text{exp} \mid (\text{Minus} \mid \text{Plus}) \ \text{exp} \mid \text{exp} \ (\text{Equal} \mid \text{NonEqual} \mid \text{Less} \mid \text{Greater} \mid \text{LessEqual} \mid \text{GreaterEqual}) \ \text{exp}
+\]
+
+其中，`lval` 表示左值，`number` 表示常量，`Plus`、`Minus`、`Multiply`、`Divide`、`Modulo` 表示运算符，`Equal`、`NonEqual`、`Less`、`Greater` 等表示关系运算符。
+
+
 
 \songti
 \subsection{工程修改说明}
