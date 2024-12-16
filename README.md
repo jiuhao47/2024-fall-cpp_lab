@@ -37,3 +37,6 @@
     - TODO: 本地运行部署。 need to be done by Cilrag
 - 2024-11-29
     - TODO: 实验报告部分撰写，见doc/section/s1.tex
+- 2024-12-16
+    - 实验报告Lab1部分撰写完成 Done by Cilrag
+    - 修改意见第一版，见doc/section/s1.tex Done by jiuhao

@@ -22,16 +22,16 @@
 
 \begin{itemize}
 	\item 标识符（Identifier）：由字母或下划线开头，后面可以跟字母、数字或下划线，表示变量名、函数名等。
-	\[
-	\text{Identifier} \colon [\_a-zA-Z][a-zA-Z0-9\_]^*
-	\]
-	
+	      \[
+		      \text{Identifier} \colon [\_a-zA-Z][a-zA-Z0-9\_]^*
+	      \]
+
 	\item 整数常量（IntConst）：可以是十进制或十六进制表示的数字。
-	\[
-	\text{IntConst} \colon (0x | 0X)[0-9a-fA-F]+ \mid [0-9]+
-	\]
-	
-	\item 关键字和符号：如逗号（`,`）、分号（`;`）、赋值符号（`=`）、括号、运算符等。
+	      \[
+		      \text{IntConst} \colon (0x | 0X)[0-9a-fA-F]+ \mid [0-9]+
+	      \]
+
+	\item 关键字和符号：如逗号（\texttt{,}）、分号（\texttt{;}）、赋值符号（\texttt{=}）、括号、运算符等。
 \end{itemize}
 
 词法分析器的任务是扫描源代码并将其分解成这些基本单元，生成一系列的词法单元序列供语法分析器进一步处理。
@@ -40,32 +40,38 @@
 
 语法分析器的任务是根据给定的文法规则检查词法单元序列是否符合语言的语法结构，并构建语法树（AST）。在本实验中，我们根据词法分析器生成的词法单元，设计了一个符合特定语法规则的语法分析器。以下是语法规则的详细描述。
 
-首先，整个程序的语法结构由多个声明（`decl`）和函数定义（`funcDef`）组成，程序以文件结束符（EOF）结尾。该语法规则可以表示为：
+\subsubsection{编译单元（compUnit）}
+
+首先，整个程序的语法结构由多个声明（\texttt{decl}）和函数定义（\texttt{funcDef}）组成，程序以文件结束符（EOF）结尾。该语法规则可以表示为：
 
 \[
-\text{compUnit} \colon (\text{decl} \mid \text{funcDef})^+ \ \text{EOF}
+	\text{compUnit} \colon (\text{decl} \mid \text{funcDef})^+ \ \text{EOF}
 \]
 
-其中，`decl` 表示声明，`funcDef` 表示函数定义。
+其中，\texttt{decl} 表示声明，\texttt{funcDef} 表示函数定义。
 
-\subsubsection*{声明（`decl`）}
+\subsubsection{函数定义（funcDef）}
 
-声明分为常量声明（`constDecl`）和变量声明（`varDecl`）。其语法规则为：
+% TODO:
+
+\subsubsection{声明 decl}
+
+声明分为常量声明（\texttt{constDecl}）和变量声明（\texttt{varDecl}）。其语法规则为：
 
 \[
-\text{decl} \colon \text{constDecl} \mid \text{varDecl}
+	\text{decl} \colon \text{constDecl} \mid \text{varDecl}
 \]
 
 常量声明的语法规则为：
 
 \[
-\text{constDecl} \colon \text{Const} \ \text{bType} \ \text{constDef} \ (\text{Comma} \ \text{constDef})^* \ \text{SemiColon}
+	\text{constDecl} \colon \text{Const} \ \text{bType} \ \text{constDef} \ (\text{Comma} \ \text{constDef})^* \ \text{SemiColon}
 \]
 
-其中，`bType` 表示基本类型（如整数类型），`constDef` 表示常量定义。常量定义的语法规则如下：
+其中，\texttt{bType} 表示基本类型（如整数类型），\texttt{constDef} 表示常量定义。常量定义的语法规则如下：
 
 \[
-\text{constDef} \colon (\text{Identifier} \mid \text{array}) \ \text{Assign} \ (\text{exp} \mid (\text{LeftBrace} \ \text{exp} (\text{Comma} \ \text{exp})^* \ \text{RightBrace}))
+	\text{constDef} \colon (\text{Identifier} \mid \text{array}) \ \text{Assign} \ (\text{exp} \mid (\text{LeftBrace} \ \text{exp} (\text{Comma} \ \text{exp})^* \ \text{RightBrace}))
 \]
 
 常量可以是标识符或数组，且必须有一个初始值（可以是单个值或数组）。
@@ -73,53 +79,76 @@
 变量声明的语法规则为：
 
 \[
-\text{varDecl} \colon \text{bType} \ \text{varDef} \ (\text{Comma} \ \text{varDef})^* \ \text{SemiColon}
+	\text{varDecl} \colon \text{bType} \ \text{varDef} \ (\text{Comma} \ \text{varDef})^* \ \text{SemiColon}
 \]
 
 变量定义的语法规则为：
 
 \[
-\text{varDef} \colon (\text{Identifier} \mid \text{array}) \ (\text{Assign} \ (\text{exp} \mid (\text{LeftBrace} \ \text{exp} (\text{Comma} \ \text{exp})^* \ \text{RightBrace})) )?
+	\text{varDef} \colon (\text{Identifier} \mid \text{array}) \ (\text{Assign} \ (\text{exp} \mid (\text{LeftBrace} \ \text{exp} (\text{Comma} \ \text{exp})^* \ \text{RightBrace})) )?
 \]
 
 其中，变量可以是标识符或数组，并且可以有初始值。
 
-\subsubsection*{数组声明（`array`）}
+\subsubsection{数组声明（array）}
 
 数组声明有两种形式：OBC 数组和普通数组。OBC 数组的语法规则为：
 
 \[
-\text{obcArray} \colon \text{Obc} \ \text{unobcArray}
+	\text{obcArray} \colon \text{Obc} \ \text{unobcArray}
 \]
 
 普通数组的语法规则为：
 
 \[
-\text{unobcArray} \colon \text{Identifier} \ \text{LeftBracket} \ (\text{exp})? \ \text{RightBracket}
+	\text{unobcArray} \colon \text{Identifier} \ \text{LeftBracket} \ (\text{exp})? \ \text{RightBracket}
 \]
 
-其中，`obcArray` 是 `Obc` 类型的数组，`unobcArray` 是普通数组，后者可能包括数组的大小。
+其中，\texttt{obcArray} 是 \texttt{Obc} 类型的数组，\texttt{unobcArray} 是普通数组，后者可能包括数组的大小。
 
-\subsubsection*{语句（`stmt`）}
+\subsubsection{语句（stmt）}
 
 语句的语法规则如下，涵盖了多种语句类型，包括赋值语句、条件语句、循环语句等：
 
-\[
-\text{stmt} \colon \text{block} \mid \text{lval} \ \text{Assign} \ \text{exp} \ \text{SemiColon} \mid \text{SemiColon} \mid \text{exp} \ \text{SemiColon} \mid \text{If} \ \text{LeftParen} \ \text{cond} \ \text{RightParen} \ \text{stmt} (\text{Else} \ \text{stmt})? \mid \text{While} \ \text{LeftParen} \ \text{cond} \ \text{RightParen} \ \text{stmt}
-\]
+\begin{gather*}
+	\begin{aligned}
+		\text{stmt} & \colon  \text{block}                                                                                             \\
+		            & \mid \text{lval} \ \text{Assign} \ \text{exp} \ \text{SemiColon}                                                 \\
+		            & \mid \text{SemiColon}                                                                                            \\
+		            & \mid \text{exp} \ \text{SemiColon}                                                                               \\
+		            & \mid \text{If} \ \text{LeftParen} \ \text{cond} \ \text{RightParen} \ \text{stmt} \ (\text{Else} \ \text{stmt})? \\
+		            & \mid \text{While} \ \text{LeftParen} \ \text{cond} \ \text{RightParen} \ \text{stmt}                             \\
+		            & \mid \text{Identifier} \ \text{LeftParen} \ \text{RightParen} \ \text{SemiColon}
+	\end{aligned}
+\end{gather*}
 
-其中，`block` 是语句块，`lval` 是左值，`exp` 是表达式，`cond` 是条件表达式，`If` 和 `While` 分别表示条件语句和循环语句。`Else` 部分是条件语句的可选部分。
+其中，\texttt{block} 是语句块，\texttt{lval} 是左值，\texttt{exp} 是表达式，\texttt{cond} 是条件表达式，\texttt{If} 和 \texttt{While} 分别表示条件语句和循环语句。\texttt{Else} 部分是条件语句的可选部分。
 
-\subsubsection*{表达式（`exp`）}
+\subsubsection{块（block）}
+
+% TODO:
+
+\subsubsection{左值（lval）}
+
+% TODO:
+
+\subsubsection{表达式（exp）}
 
 表达式的语法规则非常重要，它涵盖了变量、常量、运算符等基本构件。表达式的语法规则如下：
 
-\[
-\text{exp} \colon \text{lval} \mid \text{number} \mid \text{LeftParen} \ \text{exp} \ \text{RightParen} \mid \text{exp} \ (\text{Plus} \mid \text{Minus} \mid \text{Multiply} \mid \text{Divide} \mid \text{Modulo}) \ \text{exp} \mid (\text{Minus} \mid \text{Plus}) \ \text{exp} \mid \text{exp} \ (\text{Equal} \mid \text{NonEqual} \mid \text{Less} \mid \text{Greater} \mid \text{LessEqual} \mid \text{GreaterEqual}) \ \text{exp}
-\]
+\begin{gather*}
+	\begin{aligned}
+		\text{exp} & \colon  \text{lval}                                                                                                                                    \\
+		           & \mid \text{number}                                                                                                                                     \\
+		           & \mid \text{LeftParen} \ \text{exp} \ \text{RightParen}                                                                                                 \\
+		           & \mid (\text{Minus} \mid \text{Plus}) \ \text{exp}                                                                                                      \\
+		           & \mid \text{exp} \ (\text{Multiply} \mid \text{Divide} \mid \text{Modulo}) \ \text{exp}                                                                 \\
+		           & \mid \text{exp} \ (\text{Plus} \mid \text{Minus}) \ \text{exp}                                                                                         \\
+		           & \mid \text{exp} \ (\text{Equal} \mid \text{NonEqual} \mid \text{Less} \mid \text{Greater} \mid \text{LessEqual} \mid \text{GreaterEqual}) \ \text{exp}
+	\end{aligned}
+\end{gather*}
 
-其中，`lval` 表示左值，`number` 表示常量，`Plus`、`Minus`、`Multiply`、`Divide`、`Modulo` 表示运算符，`Equal`、`NonEqual`、`Less`、`Greater` 等表示关系运算符。
-
+其中，\texttt{lval} 表示左值，\texttt{number} 表示常量，\texttt{Plus}、\texttt{Minus}、\texttt{Multiply}、\texttt{Divide}、\texttt{Modulo} 表示运算符，\texttt{Equal}、\texttt{NonEqual}、\texttt{Less}、\texttt{Greater} 等表示关系运算符\footnote{笔者将\texttt{cond}的 实现纳入了\texttt{exp}}。
 
 
 \songti
@@ -179,7 +208,7 @@ exp:
 \textbf{首先我们简述我们调试分析过程中插入的终端输出代码：}
 
 \begin{mdframed}
-  \begin{minted}[breaklines,breakanywhere]{cpp}
+	\begin{minted}[breaklines,breakanywhere]{cpp}
 #define DEBUG 1
 #define DEBUG_SIGN "[d] "
 if (DEBUG)
@@ -207,7 +236,7 @@ if (DEBUG)
 \end{enumerate}
 
 \begin{mdframed}
-  \begin{minted}[breaklines,breakanywhere]{cpp}
+	\begin{minted}[breaklines,breakanywhere]{cpp}
 antlrcpp::Any AstBuilder::visitNumber(SafeCParser::NumberContext *ctx) {
   auto result = new number_node;
   /* 略去其它代码 */

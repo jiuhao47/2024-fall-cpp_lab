@@ -1,11 +1,11 @@
 # Fdb version 4
-["xdvipdfmx"] 1732895931.16506 "main.xdv" "main.pdf" "main" 1732895931.50077 0
-  "main.xdv" 1732895931.01718 66496 048fe2af863226b595cedc35951c64cb "xelatex"
+["xdvipdfmx"] 1734334709.60038 "main.xdv" "main.pdf" "main" 1734334709.93977 0
+  "main.xdv" 1734334709.45373 107296 5b458d288d86018a9229118e2b85e074 "xelatex"
   (generated)
   "main.pdf"
   (rewritten before read)
-["xelatex"] 1732895929.26646 "main.tex" "main.xdv" "main" 1732895931.49578 0
-  "/home/jiuhao/personal/document/texbox/.config/config-test.tex" 1731938798.43214 5366 5f89070624242f5e201f72816a6ff006 ""
+["xelatex"] 1734334707.72468 "main.tex" "main.xdv" "main" 1734334709.93492 0
+  "/home/jiuhao/personal/document/texbox/.config/config-test.tex" 1734329495.16645 5412 0d18c23157d882e378324a853f586bbe ""
   "/usr/local/texlive/2024/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2024/texmf-dist/fonts/tfm/adobe/zapfding/pzdr.tfm" 1136768653 1528 f853c4d1b4e0550255e02831fdc8496f ""
   "/usr/local/texlive/2024/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmbsy5.tfm" 1246382020 1120 1e8878807317373affa7f7bba4cf2f6a ""
@@ -316,10 +316,10 @@
   "_minted-main/7C3FA41BB1587CF7D19731A820680A2C7672CF206462F364195D6E1D9DF6CA65.pygtex" 1732895929.07429 799 00784b6421162d5183d1d48e3547dc1d ""
   "_minted-main/DF4E0728747B9EB675FB46504B8E6E8B7672CF206462F364195D6E1D9DF6CA65.pygtex" 1732895531.10442 642 7ac4c6ff6b101a676b9e625f432133c4 ""
   "_minted-main/perldoc.pygstyle" 1732893372.56345 6018 58a5f1190e45450babdce5c45db30776 ""
-  "main.aux" 1732895931.01218 1618 f0089557da3369bdbf6e9af28e8a6d1e "xelatex"
-  "main.tex" 1732863383.77566 1132 9a64fbbfc21c35dabfd89a0d40b58943 ""
-  "main.toc" 1732895931.01718 649 f118325ebb543627bedf5a460e8070ef "xelatex"
-  "section/s1.tex" 1732895925.96147 5962 f1d62264c101b8bb19f746001387229c ""
+  "main.aux" 1734334709.44773 2421 5c4bb8a015302d3a30441e2b6cca246a "xelatex"
+  "main.tex" 1733630921.1751 1132 9a64fbbfc21c35dabfd89a0d40b58943 ""
+  "main.toc" 1734334709.45273 1206 a5bd5b5bc0880134acbd5916eb19d9b6 "xelatex"
+  "section/s1.tex" 1734334705.81473 12544 a221b11510886e07670a87055cc9bfac ""
   (generated)
   "main.aux"
   "main.log"
