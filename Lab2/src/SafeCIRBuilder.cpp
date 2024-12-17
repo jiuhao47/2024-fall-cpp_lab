@@ -27,7 +27,6 @@ SafeCIRBuilder::~SafeCIRBuilder() {}
 
 void SafeCIRBuilder::obc_check(llvm::Value *index, int array_length,
                                int node_line, int node_pos, std::string name) {
-  // XXXX: 目前obc_check虽然已经实现了，但是在运行过程中会产生崩溃
   if (JJY_DEBUG_IR) {
     printf("%s %s %s %d %d %d\n", JJY_DEBUG_SIGN, __func__, name.c_str(),
            node_line, node_pos, array_length);
@@ -44,39 +43,24 @@ void SafeCIRBuilder::obc_check(llvm::Value *index, int array_length,
   //      check_success bb:
   //          ... (next insert point here)
 
-  // Create basic blocks
   llvm::Function *function = builder.GetInsertBlock()->getParent();
   llvm::BasicBlock *check_fail_bb =
       llvm::BasicBlock::Create(context, "check_fail", function);
   llvm::BasicBlock *check_success_bb =
       llvm::BasicBlock::Create(context, "check_success", function);
+  llvm::BasicBlock *check_return_bb =
+      llvm::BasicBlock::Create(context, "check_return", function);
 
-  // llvm::Value *index_load =
-  //     builder.CreateLoad(llvm::Type::getInt32Ty(context), index, "");
-  llvm::Value *left = builder.CreateICmpSLT(index, builder.getInt32(0));
-  llvm::Value *right =
-      builder.CreateICmpSGE(index, builder.getInt32(array_length));
-  llvm::Value *cmp = builder.CreateOr(left, right);
+  llvm::Value *zero_const =
+      llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), 0);
+  llvm::Value *length_const =
+      llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), array_length);
+  llvm::Value *cmp_zero = builder.CreateICmpSLT(index, zero_const);
+  llvm::Value *cmp_length = builder.CreateICmpSGE(index, length_const);
+  llvm::Value *cmp = builder.CreateOr(cmp_zero, cmp_length);
   // Create br
   builder.CreateCondBr(cmp, check_fail_bb, check_success_bb);
 
-  /*
-      // Call obc_check_error to report error:
-      llvm::Value *arg0_val =
-     llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), node_line);
-      llvm::Value *arg1_val =
-     llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), node_pos);
-      llvm::Value *arg2_val = llvm::ConstantDataArray::getString(context, name);
-      llvm::Value *arg0_ptr = lookup_variable("arg0").val_ptr;
-      llvm::Value *arg1_ptr = lookup_variable("arg1").val_ptr;
-      llvm::Value *arg2_ptr = lookup_variable("arg2").val_ptr;
-      llvm::Function *check_err = functions["obc_check_error"];
-      builder.CreateStore(arg0_val, arg0_ptr);
-      builder.CreateStore(arg1_val, arg1_ptr);
-      builder.CreateStore(arg2_val, arg2_ptr);
-      builder.CreateCall(check_err, {});
-  */
-  function->getBasicBlockList().push_back(check_fail_bb);
   builder.SetInsertPoint(check_fail_bb);
   llvm::Value *arg0_val =
       llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), node_line);
@@ -91,11 +75,12 @@ void SafeCIRBuilder::obc_check(llvm::Value *index, int array_length,
   builder.CreateStore(arg1_val, arg1_ptr);
   builder.CreateStore(arg2_val, arg2_ptr);
   builder.CreateCall(check_err, {});
-  builder.CreateRetVoid();
+  builder.CreateBr(check_return_bb);
 
   // Insert code to check_success_bb
-  function->getBasicBlockList().push_back(check_success_bb);
   builder.SetInsertPoint(check_success_bb);
+  builder.CreateBr(check_return_bb);
+  builder.SetInsertPoint(check_return_bb);
 
   return;
 }
@@ -644,18 +629,12 @@ void SafeCIRBuilder::visit(lval_node &node) {
 
           // load the index_value
           if (var_info.is_obc) {
-            if (JJY_DEBUG_OBC_CHECK) {
-              // llvm::Value *index_value_for_check = builder.CreateLoad(
-              //     llvm::Type::getInt32Ty(context), index_value, name);
-              obc_check(index_value, var_info.array_length, node.line, node.pos,
-                        name);
-            }
+            // llvm::Value *index_value_for_check = builder.CreateLoad(
+            //     llvm::Type::getInt32Ty(context), index_value, name);
+            obc_check(index_value, var_info.array_length, node.line, node.pos,
+                      name);
           }
-          // XXXX: 下面的不对
-          // llvm::Value *index_val = builder.CreateLoad(
-          //     llvm::Type::getInt32Ty(context), index_value, name);
-          // get array element
-          printf("Here1\n");
+
           llvm::Value *index_value_load = builder.CreateLoad(
               llvm::Type::getInt32Ty(context), index_value, "");
           llvm::Value *index_value_load_const = builder.CreateIntCast(
@@ -667,38 +646,34 @@ void SafeCIRBuilder::visit(lval_node &node) {
               var_info.val_ptr, {builder.getInt32(0), index_value_load_const});
           // need to get the value of the element
 
-          llvm::Value *element_value = builder.CreateLoad(
-              llvm::Type::getInt32Ty(context), element_ptr, "");
-          set_value_result(element_value);
+          set_value_result(element_ptr);
         }
       } else {
         // index is a constant
-        if (index_int < 0 || index_int >= var_info.array_length) {
-          std::cerr << node.line << ":" << node.pos
-                    << ": array index out of bound" << std::endl;
-          error_flag = true;
-          return;
-        } else {
+        // if (index_int < 0 || index_int >= var_info.array_length) {
+        //   // std::cerr << node.line << ":" << node.pos
+        //   //           << ": array index out of bound" << std::endl;
+        //   error_flag = true;
+        //   return;
+        // } else {
 
-          // index is in [0, length)
+        // index is in [0, length)
 
-          // get array element
-          llvm::Value *index_value = llvm::ConstantInt::get(
-              llvm::Type::getInt32Ty(context), index_int);
-          if (var_info.is_obc) {
-            if (JJY_DEBUG_OBC_CHECK) {
-              obc_check(index_value, var_info.array_length, node.line, node.pos,
-                        name);
-            }
-          }
-          llvm::Value *element_ptr = builder.CreateGEP(
-              llvm::ArrayType::get(llvm::Type::getInt32Ty(context),
-                                   var_info.array_length),
-              var_info.val_ptr, {builder.getInt32(0), index_value});
-          // need to get the value of the element
-          //
-          set_value_result(element_ptr);
+        // get array element
+        llvm::Value *index_value =
+            llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), index_int);
+        if (var_info.is_obc) {
+          obc_check(index_value, var_info.array_length, node.line, node.pos,
+                    name);
         }
+        llvm::Value *element_ptr = builder.CreateGEP(
+            llvm::ArrayType::get(llvm::Type::getInt32Ty(context),
+                                 var_info.array_length),
+            var_info.val_ptr, {builder.getInt32(0), index_value});
+        // need to get the value of the element
+        //
+        set_value_result(element_ptr);
+        // }
       }
     } else {
       if (JJY_DEBUG_IR) {
@@ -733,12 +708,10 @@ void SafeCIRBuilder::visit(lval_node &node) {
 
           // load the index_value
           if (var_info.is_obc) {
-            if (JJY_DEBUG_OBC_CHECK) {
-              // llvm::Value *index_value_for_check = builder.CreateLoad(
-              //     llvm::Type::getInt32Ty(context), index_value, name);
-              obc_check(index_value, var_info.array_length, node.line, node.pos,
-                        name);
-            }
+            // llvm::Value *index_value_for_check = builder.CreateLoad(
+            //     llvm::Type::getInt32Ty(context), index_value, name);
+            obc_check(index_value, var_info.array_length, node.line, node.pos,
+                      name);
           }
           // XXXX: 下面的不对
           // llvm::Value *index_val = builder.CreateLoad(
@@ -756,34 +729,35 @@ void SafeCIRBuilder::visit(lval_node &node) {
         }
       } else {
         // index is a constant
-        if (index_int < 0 || index_int >= var_info.array_length) {
-          std::cerr << node.line << ":" << node.pos
-                    << ": array index out of bound" << std::endl;
-          error_flag = true;
-          return;
-        } else {
+        // if (index_int < 0 || index_int >= var_info.array_length) {
+        //   // Runtime Error: array 'x' out of bound check error at Line:6
+        //   Pos:5 std::cerr << node.line << ":" << node.pos
+        //             << ": array index out of bound" << std::endl;
+        //   // std::cerr << "Runtime Error: array '" << name
+        //   //           << "' out of bound check error at Line:" << node.line
+        //   //           << " Pos:" << node.pos << std::endl;
+        //   error_flag = true;
+        //   return;
+        // } else {
 
-          // index is in [0, length)
+        // index is in [0, length)
 
-          // get array element
-          llvm::Value *index_value = llvm::ConstantInt::get(
-              llvm::Type::getInt32Ty(context), index_int);
-          if (var_info.is_obc) {
-            if (JJY_DEBUG_OBC_CHECK) {
-              obc_check(index_value, var_info.array_length, node.line, node.pos,
-                        name);
-            }
-          }
-          llvm::Value *element_ptr = builder.CreateGEP(
-              llvm::ArrayType::get(llvm::Type::getInt32Ty(context),
-                                   var_info.array_length),
-              var_info.val_ptr, {builder.getInt32(0), index_value});
-          // need to get the value of the element
-          //
-          llvm::Value *element_value = builder.CreateLoad(
-              llvm::Type::getInt32Ty(context), element_ptr, name);
-          set_value_result(element_value);
+        // get array element
+        llvm::Value *index_value =
+            llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), index_int);
+        if (var_info.is_obc) {
+          obc_check(index_value, var_info.array_length, node.line, node.pos,
+                    name);
         }
+        llvm::Value *element_ptr = builder.CreateGEP(
+            llvm::ArrayType::get(llvm::Type::getInt32Ty(context),
+                                 var_info.array_length),
+            var_info.val_ptr, {builder.getInt32(0), index_value});
+        // need to get the value of the element
+        //
+        llvm::Value *element_value = builder.CreateLoad(
+            llvm::Type::getInt32Ty(context), element_ptr, name);
+        set_value_result(element_value);
       }
     }
     return;
