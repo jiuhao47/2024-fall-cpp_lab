@@ -137,16 +137,11 @@ antlrcpp::Any AstBuilder::visitConstDef(SafeCParser::ConstDefContext *ctx) {
   if (JJY_DEBUG_AST) {
     printf("%s visitConstDef\n", JJY_DEBUG_SIGN);
   }
-  auto result = new var_def_node;
-
-  result->line = ctx->getStart()->getLine();
-  result->pos = ctx->getStart()->getCharPositionInLine();
-  result->is_const = true;
-  result->btype = BType::INT;
 
   if (auto array = ctx->array()) {
     // TODO: Array
     auto result = visit(array).as<var_def_node *>();
+    result->is_const = true;
     for (auto exp : ctx->exp()) {
       result->initializers.push_back(
           ptr<expr_node>(visit(exp).as<expr_node *>()));
@@ -162,6 +157,12 @@ antlrcpp::Any AstBuilder::visitConstDef(SafeCParser::ConstDefContext *ctx) {
     return result;
   } else if (ctx->Identifier()) {
     // TODO: Scalar
+    auto result = new var_def_node;
+
+    result->line = ctx->getStart()->getLine();
+    result->pos = ctx->getStart()->getCharPositionInLine();
+    result->is_const = true;
+    result->btype = BType::INT;
     result->name = ctx->Identifier()->getText();
 
     if (auto exp = ctx->exp(0)) {

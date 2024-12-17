@@ -4,6 +4,7 @@ void func()
 {
     result[arg0] = arg0;
     arg0 = arg0 - 1;
+
     if (arg0 >= 0) {
         func();
     }
