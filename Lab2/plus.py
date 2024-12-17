@@ -3,8 +3,8 @@ import subprocess
 import sys
 from termcolor import colored
 
-TESTCASE_DIR="tests"
-# TESTCASE_DIR="misc/cases"
+# TESTCASE_DIR="tests"
+TESTCASE_DIR="misc/cases"
 
 def parse_testcase(f_name):
     # Parse the code, get test cases and the expected output.
