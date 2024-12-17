@@ -10,38 +10,32 @@ namespace antlrcpp
 {
 antlrcpp::Any AstBuilder::visitCompUnit( SafeCParser::CompUnitContext *ctx )
 {
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitCompUnit\n", JJY_DEBUG_SIGN );
   }
-  auto result = new comp_unit_node;
+  auto result        = new comp_unit_node;
   auto compile_units = ctx->children;
 
-  result->line = ctx->getStart( )->getLine( );
-  result->pos = ctx->getStart( )->getCharPositionInLine( );
+  result->line       = ctx->getStart( )->getLine( );
+  result->pos        = ctx->getStart( )->getCharPositionInLine( );
 
   // Ignore the last EOF in the for loop.
-  for ( auto i = 0; i < compile_units.size( ) - 1; i++ )
-  {
-    if ( auto decl = dynamic_cast<SafeCParser::DeclContext *>( compile_units[ i ] ) )
-    {
+  for ( auto i = 0; i < compile_units.size( ) - 1; i++ ) {
+    if ( auto decl = dynamic_cast<SafeCParser::DeclContext *>( compile_units[ i ] ) ) {
       // Global define
       auto global_def_stmt_n = visit( decl ).as<stmt_node *>( );
 
-      auto var_def_stmt_n = dynamic_cast<var_def_stmt_node *>( global_def_stmt_n );
+      auto var_def_stmt_n    = dynamic_cast<var_def_stmt_node *>( global_def_stmt_n );
       result->comp_units.push_back( ptr<comp_unit_child_node>( var_def_stmt_n ) );
     } else if ( auto func_def =
-                    dynamic_cast<SafeCParser::FuncDefContext *>( compile_units[ i ] ) )
-    {
+                    dynamic_cast<SafeCParser::FuncDefContext *>( compile_units[ i ] ) ) {
       // Function define
-      if ( JJY_DEBUG_AST )
-      {
+      if ( JJY_DEBUG_AST ) {
         printf( "%s visitCompUnit: func\n", JJY_DEBUG_SIGN );
       }
       auto func_def_n = visit( func_def ).as<func_def_node *>( );
       result->comp_units.push_back( ptr<comp_unit_child_node>( func_def_n ) );
-    } else
-    {
+    } else {
       // Error.
       log( compile_units[ i ]->getText( ) );
       assert( 0 && "Unknown Compile Unit." );
@@ -55,18 +49,14 @@ antlrcpp::Any AstBuilder::visitCompUnit( SafeCParser::CompUnitContext *ctx )
 antlrcpp::Any AstBuilder::visitDecl( SafeCParser::DeclContext *ctx )
 {
   // decl: constDecl | varDecl;
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitDecl\n", JJY_DEBUG_SIGN );
   }
-  if ( auto const_decl = ctx->constDecl( ) )
-  {
+  if ( auto const_decl = ctx->constDecl( ) ) {
     return visit( const_decl );
-  } else if ( auto var_decl = ctx->varDecl( ) )
-  {
+  } else if ( auto var_decl = ctx->varDecl( ) ) {
     return visit( var_decl );
-  } else
-  {
+  } else {
     assert( 0 && "Unknown DeclContext." );
   }
 }
@@ -81,15 +71,14 @@ antlrcpp::Any AstBuilder::visitFuncDef( SafeCParser::FuncDefContext *ctx )
   //   ptr<block_node> body;
   //   virtual void accept(AstNode_Visitor &visitor) override;
   // };
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitFuncDef\n", JJY_DEBUG_SIGN );
   }
 
-  auto result = new func_def_node;
+  auto result  = new func_def_node;
 
   result->line = ctx->getStart( )->getLine( );
-  result->pos = ctx->getStart( )->getCharPositionInLine( );
+  result->pos  = ctx->getStart( )->getCharPositionInLine( );
 
   result->name = ctx->Identifier( )->getText( );
 
@@ -114,17 +103,15 @@ antlrcpp::Any AstBuilder::visitConstDecl( SafeCParser::ConstDeclContext *ctx )
   //   ptr_vector<var_def_node> var_defs;
   //   virtual void accept(AstNode_Visitor &visitor) override;
   // };
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitConstDecl\n", JJY_DEBUG_SIGN );
   }
 
-  auto result = new var_def_stmt_node;
+  auto result  = new var_def_stmt_node;
   result->line = ctx->getStart( )->getLine( );
-  result->pos = ctx->getStart( )->getCharPositionInLine( );
+  result->pos  = ctx->getStart( )->getCharPositionInLine( );
 
-  for ( auto const_def : ctx->constDef( ) )
-  {
+  for ( auto const_def : ctx->constDef( ) ) {
     auto const_def_n = visit( const_def ).as<var_def_node *>( );
     if ( JJY_DEBUG_AST )
       printf( "%s %s [info] ConstDef Return before cast\n", JJY_DEBUG_SIGN, __func__ );
@@ -149,48 +136,41 @@ antlrcpp::Any AstBuilder::visitConstDef( SafeCParser::ConstDefContext *ctx )
   //     ptr_vector<expr_node> initializers;
   //     virtual void accept(AstNode_Visitor& visitor) override;
   // };
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitConstDef\n", JJY_DEBUG_SIGN );
   }
 
-  if ( auto array = ctx->array( ) )
-  {
+  if ( auto array = ctx->array( ) ) {
     // TODO: Array
-    auto result = visit( array ).as<var_def_node *>( );
+    auto result      = visit( array ).as<var_def_node *>( );
     result->is_const = true;
-    for ( auto exp : ctx->exp( ) )
-    {
+    for ( auto exp : ctx->exp( ) ) {
       result->initializers.push_back( ptr<expr_node>( visit( exp ).as<expr_node *>( ) ) );
     }
-    if ( result->array_length == nullptr )
-    {
-      auto array_length = new number_node;
-      array_length->btype = BType::INT;
-      array_length->line = ctx->getStart( )->getLine( );
-      array_length->pos = ctx->getStart( )->getCharPositionInLine( );
+    if ( result->array_length == nullptr ) {
+      auto array_length    = new number_node;
+      array_length->btype  = BType::INT;
+      array_length->line   = ctx->getStart( )->getLine( );
+      array_length->pos    = ctx->getStart( )->getCharPositionInLine( );
       array_length->number = result->initializers.size( );
       result->array_length.reset( array_length );
     }
     return result;
-  } else if ( ctx->Identifier( ) )
-  {
+  } else if ( ctx->Identifier( ) ) {
     // TODO: Scalar
-    auto result = new var_def_node;
+    auto result      = new var_def_node;
 
-    result->line = ctx->getStart( )->getLine( );
-    result->pos = ctx->getStart( )->getCharPositionInLine( );
+    result->line     = ctx->getStart( )->getLine( );
+    result->pos      = ctx->getStart( )->getCharPositionInLine( );
     result->is_const = true;
-    result->btype = BType::INT;
-    result->name = ctx->Identifier( )->getText( );
+    result->btype    = BType::INT;
+    result->name     = ctx->Identifier( )->getText( );
 
-    if ( auto exp = ctx->exp( 0 ) )
-    {
+    if ( auto exp = ctx->exp( 0 ) ) {
       result->initializers.push_back( ptr<expr_node>( visit( exp ).as<expr_node *>( ) ) );
     }
     return result;
-  } else
-  {
+  } else {
     assert( 0 && "Unknown ConstDef" );
   }
 }
@@ -204,17 +184,15 @@ antlrcpp::Any AstBuilder::visitVarDecl( SafeCParser::VarDeclContext *ctx )
   //   virtual void accept(AstNode_Visitor &visitor) override;
   // };
   // varDecl: bType varDef (Comma varDef)* SemiColon;
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitVarDecl\n", JJY_DEBUG_SIGN );
   }
-  auto result = new var_def_stmt_node;
+  auto result  = new var_def_stmt_node;
 
   result->line = ctx->getStart( )->getLine( );
-  result->pos = ctx->getStart( )->getCharPositionInLine( );
+  result->pos  = ctx->getStart( )->getCharPositionInLine( );
 
-  for ( auto var_def : ctx->varDef( ) )
-  {
+  for ( auto var_def : ctx->varDef( ) ) {
     auto var_def_n = visit( var_def ).as<var_def_node *>( );
     result->var_defs.push_back( ptr<var_def_node>( var_def_n ) );
   }
@@ -224,8 +202,7 @@ antlrcpp::Any AstBuilder::visitVarDecl( SafeCParser::VarDeclContext *ctx )
 
 antlrcpp::Any AstBuilder::visitBType( SafeCParser::BTypeContext *ctx )
 {
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitBType\n", JJY_DEBUG_SIGN );
   }
   /* Nothing to do here. */
@@ -245,49 +222,42 @@ antlrcpp::Any AstBuilder::visitVarDef( SafeCParser::VarDefContext *ctx )
   // };
   // varDef: (Identifier | array) (Assign (exp | (LeftBrace (exp (Comma exp)*)?
   // RightBrace)))?;
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitVarDef\n", JJY_DEBUG_SIGN );
   }
-  if ( auto array = ctx->array( ) )
-  {
+  if ( auto array = ctx->array( ) ) {
     // TODO: Array
     auto result = visit( array ).as<var_def_node *>( );
-    for ( auto exp : ctx->exp( ) )
-    {
+    for ( auto exp : ctx->exp( ) ) {
       result->initializers.push_back( ptr<expr_node>( visit( exp ).as<expr_node *>( ) ) );
     }
-    if ( result->array_length == nullptr )
-    {
-      auto array_length = new number_node;
-      array_length->btype = BType::INT;
-      array_length->line = ctx->getStart( )->getLine( );
-      array_length->pos = ctx->getStart( )->getCharPositionInLine( );
+    if ( result->array_length == nullptr ) {
+      auto array_length    = new number_node;
+      array_length->btype  = BType::INT;
+      array_length->line   = ctx->getStart( )->getLine( );
+      array_length->pos    = ctx->getStart( )->getCharPositionInLine( );
       array_length->number = result->initializers.size( );
       result->array_length.reset( array_length );
     }
     return result;
     // XXXX: HERE need to add a initializers
-  } else if ( ctx->Identifier( ) )
-  {
+  } else if ( ctx->Identifier( ) ) {
     // TODO: Scalar
 
-    auto result = new var_def_node;
+    auto result      = new var_def_node;
 
-    result->line = ctx->getStart( )->getLine( );
-    result->pos = ctx->getStart( )->getCharPositionInLine( );
+    result->line     = ctx->getStart( )->getLine( );
+    result->pos      = ctx->getStart( )->getCharPositionInLine( );
 
     result->is_const = false;
-    result->btype = BType::INT;
-    result->name = ctx->Identifier( )->getText( );
+    result->btype    = BType::INT;
+    result->name     = ctx->Identifier( )->getText( );
 
-    if ( auto exp = ctx->exp( 0 ) )
-    {
+    if ( auto exp = ctx->exp( 0 ) ) {
       result->initializers.push_back( ptr<expr_node>( visit( exp ).as<expr_node *>( ) ) );
     }
     return result;
-  } else
-  {
+  } else {
     assert( 0 && "Unknown VarDef" );
   }
 }
@@ -297,18 +267,14 @@ antlrcpp::Any AstBuilder::visitArray( SafeCParser::ArrayContext *ctx )
   // TODO: Array
   //
   // array: obcArray | unobcArray;
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitArray\n", JJY_DEBUG_SIGN );
   }
-  if ( auto obc_array = ctx->obcArray( ) )
-  {
+  if ( auto obc_array = ctx->obcArray( ) ) {
     return visit( obc_array );
-  } else if ( auto unobc_array = ctx->unobcArray( ) )
-  {
+  } else if ( auto unobc_array = ctx->unobcArray( ) ) {
     return visit( unobc_array );
-  } else
-  {
+  } else {
     assert( 0 && "Unknown Array." );
   }
 }
@@ -327,25 +293,23 @@ antlrcpp::Any AstBuilder::visitObcArray( SafeCParser::ObcArrayContext *ctx )
   //   ptr_vector<expr_node> initializers;
   //   virtual void accept(AstNode_Visitor &visitor) override;
   // };
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitObcArray\n", JJY_DEBUG_SIGN );
   }
 
-  auto result = new var_def_node;
+  auto result    = new var_def_node;
 
-  result->line = ctx->getStart( )->getLine( );
-  result->pos = ctx->getStart( )->getCharPositionInLine( );
+  result->line   = ctx->getStart( )->getLine( );
+  result->pos    = ctx->getStart( )->getCharPositionInLine( );
 
   result->is_obc = true;
-  result->btype = BType::INT;
-  result->name = ctx->unobcArray( )->Identifier( )->getText( );
+  result->btype  = BType::INT;
+  result->name   = ctx->unobcArray( )->Identifier( )->getText( );
   if ( JJY_DEBUG_AST )
     printf( "%s %s [info] %s %d %d %d\n", JJY_DEBUG_SIGN, __func__, result->name.c_str( ),
             result->is_obc, result->line, result->pos );
 
-  if ( auto exp = ctx->unobcArray( )->exp( ) )
-  {
+  if ( auto exp = ctx->unobcArray( )->exp( ) ) {
     if ( JJY_DEBUG_AST )
       printf( "%s %s [info] exp before cast\n", JJY_DEBUG_SIGN, __func__ );
 
@@ -372,20 +336,18 @@ antlrcpp::Any AstBuilder::visitUnobcArray( SafeCParser::UnobcArrayContext *ctx )
   //     ptr_vector<expr_node> initializers;
   //     virtual void accept(AstNode_Visitor& visitor) override;
   // };
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitUnobcArray\n", JJY_DEBUG_SIGN );
   }
-  auto result = new var_def_node;
-  result->line = ctx->getStart( )->getLine( );
-  result->pos = ctx->getStart( )->getCharPositionInLine( );
+  auto result    = new var_def_node;
+  result->line   = ctx->getStart( )->getLine( );
+  result->pos    = ctx->getStart( )->getCharPositionInLine( );
 
   result->is_obc = false;
-  result->btype = BType::INT;
-  result->name = ctx->Identifier( )->getText( );
+  result->btype  = BType::INT;
+  result->name   = ctx->Identifier( )->getText( );
 
-  if ( auto exp = ctx->exp( ) )
-  {
+  if ( auto exp = ctx->exp( ) ) {
     result->array_length.reset( visit( exp ).as<expr_node *>( ) );
   }
 
@@ -394,24 +356,20 @@ antlrcpp::Any AstBuilder::visitUnobcArray( SafeCParser::UnobcArrayContext *ctx )
 
 antlrcpp::Any AstBuilder::visitBlock( SafeCParser::BlockContext *ctx )
 {
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitBlock\n", JJY_DEBUG_SIGN );
   }
-  auto result = new block_node;
+  auto result  = new block_node;
 
   result->line = ctx->getStart( )->getLine( );
-  result->pos = ctx->getStart( )->getCharPositionInLine( );
+  result->pos  = ctx->getStart( )->getCharPositionInLine( );
 
-  for ( auto block_item : ctx->blockItem( ) )
-  {
+  for ( auto block_item : ctx->blockItem( ) ) {
     stmt_node *block_item_n;
     auto block_item_stmt = block_item->stmt( );
-    if ( block_item_stmt != nullptr && block_item_stmt->block( ) != nullptr )
-    {
+    if ( block_item_stmt != nullptr && block_item_stmt->block( ) != nullptr ) {
       block_item_n = dynamic_cast<stmt_node *>( visit( block_item ).as<block_node *>( ) );
-    } else
-    {
+    } else {
       block_item_n = visit( block_item ).as<stmt_node *>( );
     }
     result->body.push_back( ptr<stmt_node>( block_item_n ) );
@@ -424,18 +382,14 @@ antlrcpp::Any AstBuilder::visitBlockItem( SafeCParser::BlockItemContext *ctx )
   // TODO: blockItem
   //
   // blockItem: decl | stmt;
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitBlockItem\n", JJY_DEBUG_SIGN );
   }
-  if ( auto decl = ctx->decl( ) )
-  {
+  if ( auto decl = ctx->decl( ) ) {
     return visit( decl );
-  } else if ( auto stmt = ctx->stmt( ) )
-  {
+  } else if ( auto stmt = ctx->stmt( ) ) {
     return visit( stmt );
-  } else
-  {
+  } else {
     assert( 0 && "Unknown BlockItem." );
   }
 }
@@ -450,89 +404,77 @@ antlrcpp::Any AstBuilder::visitStmt( SafeCParser::StmtContext *ctx )
   //     | exp SemiColon
   //     | If LeftParen cond RightParen stmt (Else stmt)?
   //     | While LeftParen cond RightParen stmt;
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitStmt\n", JJY_DEBUG_SIGN );
   }
-  if ( ctx->Assign( ) )
-  {
+  if ( ctx->Assign( ) ) {
     if ( JJY_DEBUG_AST )
       printf( "%s %s [info] Assign\n", JJY_DEBUG_SIGN, __func__ );
 
-    auto result = new assign_stmt_node;
+    auto result  = new assign_stmt_node;
     result->line = ctx->getStart( )->getLine( );
-    result->pos = ctx->getStart( )->getCharPositionInLine( );
+    result->pos  = ctx->getStart( )->getCharPositionInLine( );
     result->target.reset( visit( ctx->lval( ) ).as<lval_node *>( ) );
     result->value.reset( visit( ctx->exp( ) ).as<expr_node *>( ) );
     return dynamic_cast<stmt_node *>( result );
-  } else if ( auto block = ctx->block( ) )
-  {
+  } else if ( auto block = ctx->block( ) ) {
     if ( JJY_DEBUG_AST )
       printf( "%s %s [info] Stmt block\n", JJY_DEBUG_SIGN, __func__ );
     return visit( block );
-  } else if ( ctx->isEmpty( ) )
-  {
+  } else if ( ctx->isEmpty( ) ) {
     if ( JJY_DEBUG_AST )
       printf( "%s %s [info] Stmt Empty\n", JJY_DEBUG_SIGN, __func__ );
     auto result = new empty_stmt_node;
     return dynamic_cast<stmt_node *>( result );
-  } else if ( auto exp = ctx->exp( ) )
-  {
+  } else if ( auto exp = ctx->exp( ) ) {
     if ( JJY_DEBUG_AST )
       printf( "%s %s [info] Stmt exp\n", JJY_DEBUG_SIGN, __func__ );
     return visit( exp );
-  } else if ( auto if_stmt = ctx->If( ) )
-  {
+  } else if ( auto if_stmt = ctx->If( ) ) {
     if ( JJY_DEBUG_AST )
       printf( "%s %s [info] Stmt If\n", JJY_DEBUG_SIGN, __func__ );
 
-    auto result = new if_stmt_node;
+    auto result  = new if_stmt_node;
     result->line = ctx->getStart( )->getLine( );
-    result->pos = ctx->getStart( )->getCharPositionInLine( );
+    result->pos  = ctx->getStart( )->getCharPositionInLine( );
     result->cond.reset( visit( ctx->cond( ) ).as<cond_node *>( ) );
 
     block_node *if_body;
     if_body = visit( ctx->stmt( 0 ) ).as<block_node *>( );
     result->if_body.reset( dynamic_cast<stmt_node *>( if_body ) );
 
-    if ( auto stmt = ctx->stmt( 1 ) )
-    {
+    if ( auto stmt = ctx->stmt( 1 ) ) {
       block_node *else_body;
       if ( JJY_DEBUG_AST )
         printf( "%s %s [info] Stmt Else\n", JJY_DEBUG_SIGN, __func__ );
-      if ( stmt->If( ) )
-      {
+      if ( stmt->If( ) ) {
         if ( JJY_DEBUG_AST )
           printf( "%s %s [info] Stmt Else If\n", JJY_DEBUG_SIGN, __func__ );
         result->else_body.reset( visit( stmt ).as<stmt_node *>( ) );
-      } else
-      {
+      } else {
         else_body = visit( stmt ).as<block_node *>( );
         result->else_body.reset( dynamic_cast<stmt_node *>( else_body ) );
       }
     }
     return dynamic_cast<stmt_node *>( result );
-  } else if ( auto while_stmt = ctx->While( ) )
-  {
+  } else if ( auto while_stmt = ctx->While( ) ) {
     if ( JJY_DEBUG_AST )
       printf( "%s %s [info] Stmt While\n", JJY_DEBUG_SIGN, __func__ );
-    auto result = new while_stmt_node;
+    auto result  = new while_stmt_node;
 
     result->line = ctx->getStart( )->getLine( );
-    result->pos = ctx->getStart( )->getCharPositionInLine( );
+    result->pos  = ctx->getStart( )->getCharPositionInLine( );
     result->cond.reset( visit( ctx->cond( ) ).as<cond_node *>( ) );
     result->body.reset( visit( ctx->stmt( 0 ) ).as<block_node *>( ) );
 
     return dynamic_cast<stmt_node *>( result );
-  } else if ( ctx->LeftParen( ) && ctx->RightParen( ) )
-  {
-    auto result = new func_call_stmt_node;
+  } else if ( ctx->LeftParen( ) && ctx->RightParen( ) ) {
+    auto result  = new func_call_stmt_node;
     result->line = ctx->getStart( )->getLine( );
-    result->pos = ctx->getStart( )->getCharPositionInLine( );
+    result->pos  = ctx->getStart( )->getCharPositionInLine( );
     result->name = ctx->Identifier( )->getText( );
     return dynamic_cast<stmt_node *>( result );
-  } else
-  {
+  } else {
     assert( 0 && "Unknown Stmt." );
   }
 }
@@ -542,8 +484,7 @@ antlrcpp::Any AstBuilder::visitCond( SafeCParser::CondContext *ctx )
   // TODO: Cond
   //
   // cond: exp;
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitCond\n", JJY_DEBUG_SIGN );
   }
   return visit( ctx->exp( ) );
@@ -561,8 +502,7 @@ antlrcpp::Any AstBuilder::visitLval( SafeCParser::LvalContext *ctx )
   //   ptr<expr_node> array_index;
   //   virtual void accept(AstNode_Visitor &visitor) override;
   // };
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitLval\n", JJY_DEBUG_SIGN );
   }
   // if (ctx->LeftParen() && ctx->RightParen()) {
@@ -574,17 +514,16 @@ antlrcpp::Any AstBuilder::visitLval( SafeCParser::LvalContext *ctx )
   //   result->name = ctx->Identifier()->getText();
   //   return dynamic_cast<stmt_node *>(result);
   // } else {
-  auto result = new lval_node;
+  auto result  = new lval_node;
   result->line = ctx->getStart( )->getLine( );
-  result->pos = ctx->getStart( )->getCharPositionInLine( );
+  result->pos  = ctx->getStart( )->getCharPositionInLine( );
   result->name = ctx->Identifier( )->getText( );
 
   if ( JJY_DEBUG_AST )
     printf( "%s %s [info] %s %d %d\n", JJY_DEBUG_SIGN, __func__, result->name.c_str( ),
             result->line, result->pos );
 
-  if ( auto exp = ctx->exp( ) )
-  {
+  if ( auto exp = ctx->exp( ) ) {
     result->array_index.reset( visit( exp ).as<expr_node *>( ) );
   }
 
@@ -595,23 +534,20 @@ antlrcpp::Any AstBuilder::visitLval( SafeCParser::LvalContext *ctx )
 
 antlrcpp::Any AstBuilder::visitNumber( SafeCParser::NumberContext *ctx )
 {
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitNumber\n", JJY_DEBUG_SIGN );
   }
-  auto result = new number_node;
+  auto result   = new number_node;
   result->btype = BType::INT;
-  result->line = ctx->getStart( )->getLine( );
-  result->pos = ctx->getStart( )->getCharPositionInLine( );
-  auto num_str = ctx->IntConst( )->getText( );
+  result->line  = ctx->getStart( )->getLine( );
+  result->pos   = ctx->getStart( )->getCharPositionInLine( );
+  auto num_str  = ctx->IntConst( )->getText( );
 
   if ( num_str.size( ) > 2 && num_str[ 0 ] == '0' &&
-       ( num_str[ 1 ] == 'x' || num_str[ 1 ] == 'X' ) )
-  {
+       ( num_str[ 1 ] == 'x' || num_str[ 1 ] == 'X' ) ) {
     // Hex
     result->number = std::stoi( num_str, 0, 16 );
-  } else
-  {
+  } else {
     // Dec
     result->number = std::stoi( num_str, 0, 10 );
   }
@@ -631,66 +567,54 @@ antlrcpp::Any AstBuilder::visitExp( SafeCParser::ExpContext *ctx )
   //     | (Minus | Plus) exp
   //     | exp (Equal | NonEqual | Less | Greater | LessEqual | GreaterEqual)
   //     exp;
-  if ( JJY_DEBUG_AST )
-  {
+  if ( JJY_DEBUG_AST ) {
     printf( "%s visitExp\n", JJY_DEBUG_SIGN );
   }
   auto exps = ctx->exp( );
-  if ( ctx->lval( ) )
-  {
+  if ( ctx->lval( ) ) {
     if ( JJY_DEBUG_AST )
       printf( "%s %s [info] lval\n", JJY_DEBUG_SIGN, __func__ );
     auto result = new lval_node;
-    result = visit( ctx->lval( ) ).as<lval_node *>( );
+    result      = visit( ctx->lval( ) ).as<lval_node *>( );
 
     return dynamic_cast<expr_node *>( result );
-  } else if ( ctx->number( ) )
-  {
+  } else if ( ctx->number( ) ) {
     if ( JJY_DEBUG_AST )
       printf( "%s %s [info] number\n", JJY_DEBUG_SIGN, __func__ );
     // 数字: number
     return visit( ctx->number( ) );
   }
 
-  else if ( ctx->LeftParen( ) && ctx->RightParen( ) )
-  {
+  else if ( ctx->LeftParen( ) && ctx->RightParen( ) ) {
     if ( JJY_DEBUG_AST )
       printf( "%s %s [info] (exp)\n", JJY_DEBUG_SIGN, __func__ );
     // 括号表达式: (exp)
     return visit( exps[ 0 ] ).as<expr_node *>( );
   }
 
-  else if ( exps.size( ) == 2 )
-  {
+  else if ( exps.size( ) == 2 ) {
     // 二元运算: exp (op) exp
     bool is_bin_op = ctx->Plus( ) || ctx->Minus( ) || ctx->Multiply( ) ||
                      ctx->Divide( ) || ctx->Modulo( );
     bool is_rel_op = ctx->Equal( ) || ctx->NonEqual( ) || ctx->Less( ) ||
                      ctx->LessEqual( ) || ctx->Greater( ) || ctx->GreaterEqual( );
-    if ( is_bin_op )
-    {
+    if ( is_bin_op ) {
       if ( JJY_DEBUG_AST )
         printf( "%s %s [info] BinOp\n", JJY_DEBUG_SIGN, __func__ );
-      auto result = new binop_expr_node;
+      auto result  = new binop_expr_node;
       result->line = ctx->getStart( )->getLine( );
-      result->pos = ctx->getStart( )->getCharPositionInLine( );
-      if ( ctx->Plus( ) )
-      {
+      result->pos  = ctx->getStart( )->getCharPositionInLine( );
+      if ( ctx->Plus( ) ) {
         result->op = BinOp::PLUS;
-      } else if ( ctx->Minus( ) )
-      {
+      } else if ( ctx->Minus( ) ) {
         result->op = BinOp::MINUS;
-      } else if ( ctx->Multiply( ) )
-      {
+      } else if ( ctx->Multiply( ) ) {
         result->op = BinOp::MULTIPLY;
-      } else if ( ctx->Divide( ) )
-      {
+      } else if ( ctx->Divide( ) ) {
         result->op = BinOp::DIVIDE;
-      } else if ( ctx->Modulo( ) )
-      {
+      } else if ( ctx->Modulo( ) ) {
         result->op = BinOp::MODULO;
-      } else
-      {
+      } else {
         assert( 0 && "Unknown binary operator in exp" );
       }
 
@@ -702,33 +626,25 @@ antlrcpp::Any AstBuilder::visitExp( SafeCParser::ExpContext *ctx )
         printf( "%s %s [info] after exp1 cast\n", JJY_DEBUG_SIGN, __func__ );
 
       return dynamic_cast<expr_node *>( result );
-    } else if ( is_rel_op )
-    {
+    } else if ( is_rel_op ) {
       if ( JJY_DEBUG_AST )
         printf( "%s %s [info] RelOp\n", JJY_DEBUG_SIGN, __func__ );
-      auto result = new cond_node;
+      auto result  = new cond_node;
       result->line = ctx->getStart( )->getLine( );
-      result->pos = ctx->getStart( )->getCharPositionInLine( );
-      if ( ctx->Equal( ) )
-      {
+      result->pos  = ctx->getStart( )->getCharPositionInLine( );
+      if ( ctx->Equal( ) ) {
         result->op = RelOp::EQUAL;
-      } else if ( ctx->NonEqual( ) )
-      {
+      } else if ( ctx->NonEqual( ) ) {
         result->op = RelOp::NON_EQUAL;
-      } else if ( ctx->Less( ) )
-      {
+      } else if ( ctx->Less( ) ) {
         result->op = RelOp::LESS;
-      } else if ( ctx->LessEqual( ) )
-      {
+      } else if ( ctx->LessEqual( ) ) {
         result->op = RelOp::LESS_EQUAL;
-      } else if ( ctx->Greater( ) )
-      {
+      } else if ( ctx->Greater( ) ) {
         result->op = RelOp::GREATER;
-      } else if ( ctx->GreaterEqual( ) )
-      {
+      } else if ( ctx->GreaterEqual( ) ) {
         result->op = RelOp::GREATER_EQUAL;
-      } else
-      {
+      } else {
         assert( 0 && "Unknown binary operator in exp" );
       }
 
@@ -739,22 +655,18 @@ antlrcpp::Any AstBuilder::visitExp( SafeCParser::ExpContext *ctx )
     }
   }
 
-  else if ( exps.size( ) == 1 )
-  {
+  else if ( exps.size( ) == 1 ) {
     if ( JJY_DEBUG_AST )
       printf( "%s %s [info] UnaryOp\n", JJY_DEBUG_SIGN, __func__ );
-    auto result = new unaryop_expr_node;
+    auto result  = new unaryop_expr_node;
     result->line = ctx->getStart( )->getLine( );
-    result->pos = ctx->getStart( )->getCharPositionInLine( );
+    result->pos  = ctx->getStart( )->getCharPositionInLine( );
 
-    if ( ctx->Plus( ) )
-    {
+    if ( ctx->Plus( ) ) {
       result->op = UnaryOp::PLUS;
-    } else if ( ctx->Minus( ) )
-    {
+    } else if ( ctx->Minus( ) ) {
       result->op = UnaryOp::MINUS;
-    } else
-    {
+    } else {
       assert( 0 && "Unknown unary operator in exp" );
     }
 
