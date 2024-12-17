@@ -1,0 +1,80 @@
+define void @func() {
+entry:
+  br i1 or (i1 icmp slt (ptr @arg0, i32 0), i1 icmp sge (ptr @arg0, i32 10)), label %check_fail, label %check_success
+
+check_fail:                                       ; preds = %entry
+  store i32 5, ptr @arg0, align 4
+  store i32 4, ptr @arg1, align 4
+  store [7 x i8] c"result\00", ptr @arg2, align 1
+  call void @obc_check_error()
+  ret void
+
+check_success:                                    ; preds = %entry
+  %0 = load i32, ptr @arg0, align 4
+  %1 = getelementptr [10 x i32], ptr @result, i32 0, i32 %0
+  %arg0 = load i32, ptr @arg0, align 4
+  store i32 %arg0, ptr %1, align 4
+  %arg01 = load i32, ptr @arg0, align 4
+  %2 = sub i32 %arg01, 1
+  store i32 %2, ptr @arg0, align 4
+  %arg02 = load i32, ptr @arg0, align 4
+  %3 = icmp sge i32 %arg02, 0
+  br i1 %3, label %if, label %else
+
+if:                                               ; preds = %check_success
+  call void @func()
+  br label %merge
+
+else:                                             ; preds = %check_success
+  br label %merge
+
+merge:                                            ; preds = %else, %if
+  ret void
+}
+
+define void @main() {
+entry:
+  call void @input()
+  %input_var = load i32, ptr @input_var, align 4
+  %0 = sub i32 %input_var, 1
+  store i32 %0, ptr @arg0, align 4
+  %cnt = alloca i32, align 4
+  %arg0 = load i32, ptr @arg0, align 4
+  store i32 %arg0, ptr %cnt, align 4
+  call void @func()
+  store i32 1, ptr @output_var, align 4
+  call void @output()
+  br label %cond
+
+cond:                                             ; preds = %check_success, %entry
+  %cnt1 = load i32, ptr %cnt, align 4
+  %1 = icmp sge i32 %cnt1, 0
+  br i1 %1, label %body, label %merge
+
+body:                                             ; preds = %cond
+  %cnt2 = load i32, ptr %cnt, align 4
+  %2 = icmp slt i32 %cnt2, 0
+  %3 = icmp sge i32 %cnt2, 10
+  %4 = or i1 %2, %3
+  br i1 %4, label %check_fail, label %check_success
+
+merge:                                            ; preds = %cond
+  ret void
+
+check_fail:                                       ; preds = %body
+  store i32 23, ptr @arg0, align 4
+  store i32 21, ptr @arg1, align 4
+  store [7 x i8] c"result\00", ptr @arg2, align 1
+  call void @obc_check_error()
+  ret void
+
+check_success:                                    ; preds = %body
+  %5 = getelementptr [10 x i32], ptr @result, i32 0, i32 %cnt2
+  %result = load i32, ptr %5, align 4
+  store i32 %result, ptr @output_var, align 4
+  call void @output()
+  %cnt3 = load i32, ptr %cnt, align 4
+  %6 = sub i32 %cnt3, 1
+  store i32 %6, ptr %cnt, align 4
+  br label %cond
+}

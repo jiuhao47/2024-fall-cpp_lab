@@ -48,8 +48,6 @@ void SafeCIRBuilder::obc_check(llvm::Value *index, int array_length,
       llvm::BasicBlock::Create(context, "check_fail", function);
   llvm::BasicBlock *check_success_bb =
       llvm::BasicBlock::Create(context, "check_success", function);
-  llvm::BasicBlock *check_return_bb =
-      llvm::BasicBlock::Create(context, "check_return", function);
 
   llvm::Value *zero_const =
       llvm::ConstantInt::get(llvm::Type::getInt32Ty(context), 0);
@@ -75,12 +73,11 @@ void SafeCIRBuilder::obc_check(llvm::Value *index, int array_length,
   builder.CreateStore(arg1_val, arg1_ptr);
   builder.CreateStore(arg2_val, arg2_ptr);
   builder.CreateCall(check_err, {});
-  builder.CreateBr(check_return_bb);
+  builder.CreateRetVoid();
 
   // Insert code to check_success_bb
   builder.SetInsertPoint(check_success_bb);
-  builder.CreateBr(check_return_bb);
-  builder.SetInsertPoint(check_return_bb);
+  builder.SetInsertPoint(check_success_bb);
 
   return;
 }
@@ -628,17 +625,17 @@ void SafeCIRBuilder::visit(lval_node &node) {
           // insert the call
 
           // load the index_value
-          if (var_info.is_obc) {
-            // llvm::Value *index_value_for_check = builder.CreateLoad(
-            //     llvm::Type::getInt32Ty(context), index_value, name);
-            obc_check(index_value, var_info.array_length, node.line, node.pos,
-                      name);
-          }
-
           llvm::Value *index_value_load = builder.CreateLoad(
               llvm::Type::getInt32Ty(context), index_value, "");
           llvm::Value *index_value_load_const = builder.CreateIntCast(
               index_value_load, llvm::Type::getInt32Ty(context), true);
+
+          if (var_info.is_obc) {
+            // llvm::Value *index_value_for_check = builder.CreateLoad(
+            //     llvm::Type::getInt32Ty(context), index_value, name);
+            obc_check(index_value_load_const, var_info.array_length, node.line,
+                      node.pos, name);
+          }
 
           llvm::Value *element_ptr = builder.CreateGEP(
               llvm::ArrayType::get(llvm::Type::getInt32Ty(context),
