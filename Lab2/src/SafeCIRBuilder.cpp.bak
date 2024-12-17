@@ -26,10 +26,12 @@ SafeCIRBuilder::~SafeCIRBuilder() {}
 
 void SafeCIRBuilder::obc_check(llvm::Value *index, int array_length,
                                int node_line, int node_pos, std::string name) {
-  //XXXX: 目前obc_check虽然已经实现了，但是在运行过程中会产生崩溃
   if (JJY_DEBUG_IR) {
     printf("%s %s %s %d %d %d\n", JJY_DEBUG_SIGN, __func__, name.c_str(),
            node_line, node_pos, array_length);
+    printf("%s %s index type = ", JJY_DEBUG_SIGN, __func__);
+    printType(index->getType());
+    printType(llvm::Type::getInt32Ty(context));
   }
   // Insert code to check if index is in [0, length).
   // If not in range, call obc_check_error to report error.
@@ -49,6 +51,14 @@ void SafeCIRBuilder::obc_check(llvm::Value *index, int array_length,
       llvm::BasicBlock::Create(context, "check_fail", function);
   llvm::BasicBlock *check_success_bb =
       llvm::BasicBlock::Create(context, "check_success", function);
+
+  // Create cmp
+  // llvm::Value *index_load =
+  //     builder.CreateLoad(llvm::Type::getInt32Ty(context), index, "");
+  // llvm::Value *left = builder.CreateICmpSLT(index_load, builder.getInt32(0));
+  // llvm::Value *right =
+  //     builder.CreateICmpSGE(index_load, builder.getInt32(array_length));
+  // llvm::Value *cmp = builder.CreateOr(left, right);
 
   // llvm::Value *index_load =
   //     builder.CreateLoad(llvm::Type::getInt32Ty(context), index, "");
@@ -517,7 +527,7 @@ void SafeCIRBuilder::visit(lval_node &node) {
         printf("%s %s lval_node: not array, expect rval\n", JJY_DEBUG_SIGN,
                __func__);
       }
-      llvm::Type *type = llvm::Type::getInt32Ty(context);
+      llvm::Type *type = var_info.val_ptr->getType();
       llvm::Value *loaded_val =
           builder.CreateLoad(type, var_info.val_ptr, name);
 
@@ -571,20 +581,20 @@ void SafeCIRBuilder::visit(lval_node &node) {
           // load the index_value
           if (var_info.is_obc) {
             if (JJY_DEBUG_OBC_CHECK) {
-              // llvm::Value *index_value_for_check = builder.CreateLoad(
-              //     llvm::Type::getInt32Ty(context), index_value, name);
-              obc_check(index_value, var_info.array_length, node.line, node.pos,
-                        name);
+              llvm::Value *index_value_for_check = builder.CreateLoad(
+                  llvm::Type::getInt32Ty(context), index_value, name);
+              obc_check(index_value_for_check, var_info.array_length, node.line,
+                        node.pos, name);
             }
           }
           // XXXX: 下面的不对
-          // llvm::Value *index_val = builder.CreateLoad(
-          //     llvm::Type::getInt32Ty(context), index_value, name);
+          llvm::Value *index_val = builder.CreateLoad(
+              llvm::Type::getInt32Ty(context), index_value, name);
           // get array element
           llvm::Value *element_ptr = builder.CreateGEP(
               llvm::ArrayType::get(llvm::Type::getInt32Ty(context),
                                    var_info.array_length),
-              var_info.val_ptr, {builder.getInt32(0), index_value});
+              var_info.val_ptr, {builder.getInt32(0), index_val});
           // need to get the value of the element
 
           llvm::Value *element_value = builder.CreateLoad(
@@ -711,7 +721,7 @@ void SafeCIRBuilder::visit(var_def_node &node) {
           if (i < initializers.size()) {
             int init_int;
             llvm::Value *init_value;
-            EXPECT_RVAL(initializers[i]->accept(*this));
+            EXPECT_LVAL(initializers[i]->accept(*this));
             if (!get_int_result(init_int)) {
               if (!get_value_result(&init_value)) {
                 std::cerr
@@ -753,7 +763,7 @@ void SafeCIRBuilder::visit(var_def_node &node) {
       if (initializers.size() > 0) {
         int init_int;
         llvm::Value *init_value;
-        EXPECT_RVAL(initializers[0]->accept(*this));
+        EXPECT_LVAL(initializers[0]->accept(*this));
         if (!get_int_result(init_int)) {
           if (!get_value_result(&init_value)) {
             std::cerr << node.line << ":" << node.pos
@@ -818,7 +828,7 @@ void SafeCIRBuilder::visit(var_def_node &node) {
           if (i < initializers.size()) {
             int init_int;
             llvm::Value *init_value;
-            EXPECT_RVAL(initializers[i]->accept(*this));
+            EXPECT_LVAL(initializers[i]->accept(*this));
             if (!get_int_result(init_int)) {
               if (!get_value_result(&init_value)) {
                 std::cerr << node.line << ":" << node.pos
