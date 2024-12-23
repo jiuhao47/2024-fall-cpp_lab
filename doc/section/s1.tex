@@ -55,14 +55,16 @@
 函数定义的语法规则定义了函数的结构，包括返回类型、函数名、参数列表以及函数体。根据语法规则，函数定义的语法为：
 
 \[
-\texttt{funcDef} \colon \texttt{Void} \ \texttt{Identifier} \ \texttt{LeftParen} \ \texttt{RightParen} \ \texttt{block}
+	\texttt{funcDef} \colon \texttt{Void} \ \texttt{Identifier} \ \texttt{LeftParen} \ \texttt{RightParen} \ \texttt{block}
 \]
 
 其中：
-- \texttt{Void} 表示函数返回类型为 \texttt{void}；
-- \texttt{Identifier} 表示函数的标识符（函数名）；
-- \texttt{LeftParen} 和 \texttt{RightParen} 表示参数列表的左括号和右括号。此处的语法规则表明函数没有参数（即参数列表为空）；
-- \texttt{block} 表示函数的代码块，即函数体，其中包含了函数的执行语句。
+\begin{enumerate}
+	\item \texttt{Void} 表示函数返回类型为 \texttt{void}；
+	\item \texttt{Identifier} 表示函数的标识符（函数名）；
+	\item \texttt{LeftParen} 和 \texttt{RightParen} 表示参数列表的左括号和右括号。此处的语法规则表明函数没有参数（即参数列表为空）；
+	\item \texttt{block} 表示函数的代码块，即函数体，其中包含了函数的执行语句。
+\end{enumerate}
 
 因此，函数定义语法规则指定了一个没有参数的 \texttt{void} 类型函数，它的代码块包括该函数的实际操作。
 
@@ -81,7 +83,7 @@
 	\text{constDecl} \colon \text{Const} \ \text{bType} \ \text{constDef} \ (\text{Comma} \ \text{constDef})^* \ \text{SemiColon}
 \]
 
-其中，\texttt{bType} 表示基本类型（如整数类型），\texttt{constDef} 表示常量定义。常量定义的语法规则如下：
+其中，\texttt{bType} 表示基本类型（如整数类型），\texttt{constDef} 表示常量定义。语法规则如下：
 
 \[
 	\text{constDef} \colon (\text{Identifier} \mid \text{array}) \ \text{Assign} \ (\text{exp} \mid (\text{LeftBrace} \ \text{exp} (\text{Comma} \ \text{exp})^* \ \text{RightBrace}))
@@ -105,10 +107,10 @@
 
 \subsubsection{数组声明（array）}
 
-数组声明有两种形式：OBC 数组和普通数组。OBC 数组的语法规则为：
+数组声明有两种形式：obc 数组和普通数组。obc 数组的语法规则为：
 
 \[
-	\text{obcArray} \colon \text{Obc} \ \text{unobcArray}
+	\text{obcArray} \colon \text{obc} \ \text{unobcArray}
 \]
 
 普通数组的语法规则为：
@@ -117,7 +119,7 @@
 	\text{unobcArray} \colon \text{Identifier} \ \text{LeftBracket} \ (\text{exp})? \ \text{RightBracket}
 \]
 
-其中，\texttt{obcArray} 是 \texttt{Obc} 类型的数组，\texttt{unobcArray} 是普通数组，后者可能包括数组的大小。
+其中，\texttt{obcArray} 是 \texttt{obc} 类型的数组，\texttt{unobcArray} 是普通数组，后者可能包括数组的大小。
 
 \subsubsection{语句（stmt）}
 
@@ -135,19 +137,21 @@
 	\end{aligned}
 \end{gather*}
 
-其中，\texttt{block} 是语句块，\texttt{lval} 是左值，\texttt{exp} 是表达式，\texttt{cond} 是条件表达式，\texttt{If} 和 \texttt{While} 分别表示条件语句和循环语句。\texttt{Else} 部分是条件语句的可选部分。
+其中，\texttt{block} 是语句块，\texttt{lval} 是左值，\texttt{exp} 是表达式，\texttt{cond} 是条件表达式，\texttt{If} 和 \texttt{While} 分别表示条件语句和循环语句。\texttt{Else} 部分是条件语句的可选部分。\texttt{Identifier} \texttt{LeftParen} \texttt{RightParen} \texttt{SemiColon} 表示函数调用。
 
 \subsubsection{块（block）}
 
 在编程语言中，语句块是由一对大括号包围的一组语句。语句块是程序中的基本组成部分，用于组织一组语句，使它们可以作为一个整体执行。语法规则如下：
 
 \[
-\texttt{block} \colon \texttt{LeftBrace} \ (\texttt{blockItem})^* \ \texttt{RightBrace}
+	\texttt{block} \colon \texttt{LeftBrace} \ (\texttt{blockItem})^* \ \texttt{RightBrace}
 \]
 
 其中：
-- \texttt{LeftBrace} 和 \texttt{RightBrace} 分别表示语句块的开始和结束；
-- \texttt{blockItem} 表示语句块内的单个语句或声明，可以是声明（\texttt{decl}）或语句（\texttt{stmt}）。
+\begin{enumerate}
+	\item \texttt{LeftBrace} 和 \texttt{RightBrace} 分别表示语句块的开始和结束；
+	\item \texttt{blockItem} 表示语句块内的单个语句或声明，可以是声明（\texttt{decl}）或语句（\texttt{stmt}）。
+\end{enumerate}
 
 这意味着一个语句块可以包含零个或多个语句或声明。通过这种方式，语句块允许程序结构化地组织代码。
 
@@ -155,16 +159,21 @@
 
 左值是可以出现在赋值语句中的表达式，它表示一个可以被赋值的变量。左值通常是一个标识符（变量名）或者是数组元素、函数调用等。左值的语法规则如下：
 
-\[
-\texttt{lval} \colon \texttt{Identifier} \mid (\texttt{Identifier} \ \texttt{LeftBracket} \ \texttt{exp} \ \texttt{RightBracket}) \mid (\texttt{Identifier} \ \texttt{LeftParen} \ \texttt{RightParen})
-\]
+\begin{gather*}
+	\begin{aligned}
+		\text{lval} & \colon \text{Identifier}                                                         \\
+		            & \mid (\text{Identifier} \ \text{LeftBracket} \ \text{exp} \ \text{RightBracket})
+	\end{aligned}
+\end{gather*}
 
 其中：
-- \texttt{Identifier} 表示一个简单的标识符，即一个变量名；
-- \texttt{(Identifier LeftBracket exp RightBracket)} 表示数组元素的访问，\texttt{exp} 表示数组索引的表达式；
-- \texttt{(Identifier LeftParen RightParen)} 表示函数调用，它也是一种左值，尽管它通常是一个表达式的返回值，但在本语法中我们允许将其作为左值出现在赋值语句中。
 
-例如，对于表达式 \texttt{a = 10;} 中，\texttt{a} 是左值；在表达式 \texttt{a[5] = 10;} 中，\texttt{a[5]} 也是一个左值，因为它表示数组 \texttt{a} 中索引为 \texttt{5} 的元素。对于 \texttt{func()} 作为左值的情况，可以理解为函数返回的结果被赋值。
+\begin{enumerate}
+	\item \texttt{Identifier} 表示一个简单的标识符，即一个变量名；
+	\item \texttt{(Identifier LeftBracket exp RightBracket)} 表示数组元素的访问，\texttt{exp} 表示数组索引的表达式；
+\end{enumerate}
+
+例如，对于表达式 \texttt{a = 10;} 中，\texttt{a} 是左值；在表达式 \texttt{a[5] = 10;} 中，\texttt{a[5]} 也是一个左值，因为它表示数组 \texttt{a} 中索引为 \texttt{5} 的元素。
 
 
 \subsubsection{表达式（exp）}
@@ -189,7 +198,18 @@
 \songti
 \subsection{工程修改说明}
 
-本次实验并未修改除了\texttt{SafeCLexer.g4}、\texttt{SafeCParser.g4}、\texttt{AstBuilder.cpp}之外的任何文件。
+本次实验笔者添加了\texttt{Utils.h}用于定义调试输出宏。
+
+\begin{mdframed}
+	\begin{minted}[breaklines,breakanywhere]{cpp}
+#define JJY_DEBUG_AST 0
+#define JJY_DEBUG_IR 1
+#define JJY_DEBUG_OBC_CHECK 1
+#define JJY_DEBUG_SIGN "[j] "
+  \end{minted}
+\end{mdframed}
+
+本次实验未修改除了\texttt{SafeCLexer.g4}、\texttt{SafeCParser.g4}、\texttt{AstBuilder.cpp}之外的任何文件。
 
 \subsection{实现过程及困难}
 
@@ -205,14 +225,13 @@
 
 本文件的完善过程主要是循序渐进的根据测试脚本的执行结果进行逐步的完善。测试脚本会给出当前语法分析器在解析文件时的错误信息（通常为遇到的未定义token的位置），根据这些信息，找到对应的规则进行Debug。
 
-
 本文件的编写过程中遇到的主要困难是对Safe C语言的语法规则的理解，以及如何将其转化为ANTLR4的语法规则。在编写过程中，我们发现了一些Safe C语言的语法规则与C语言的语法规则不同的地方，例如Safe C语言中的数组声明需要在变量名后面加上\texttt{obc}关键字，这在C语言中是不需要的。而且在编写\texttt{AstBuilder.cpp}时，我们发现之前通过测试的Safe C语法规则在实现抽象语法树构建时会引入不必要的麻烦与冗余（主要体现在对于赋值语句被错误的划分到表达式逻辑中），故我们在编写\texttt{AstBuilder.cpp}过程中对语法规则进行了修改。
 
 \begin{mdframed}
 	\begin{minted}[breaklines,breakanywhere]{antlr}
 stmt: 
     block
-    | lval Assign exp SemiColon // 此行为编写AstBuilder.cpp时添加
+    | lval Assign exp SemiColon // 此行于编写AstBuilder.cpp时添加
     | SemiColon
     | exp SemiColon
     | If LeftParen cond RightParen stmt (Else stmt)?
@@ -227,6 +246,45 @@ exp:
     | exp (Equal | NonEqual | Less | Greater | LessEqual | GreaterEqual) exp;
   \end{minted}
 \end{mdframed}
+
+此外在进行Lab2，中间代码生成实验时，我们发现上述文法依旧存在问题
+
+对于\texttt{stmt}的文法规则，我们将\texttt{lval}规则中的函数调用部分划分到了\texttt{stmt}中，这样在实现中间代码生成时，我们可以直接将函数调用作为一个\texttt{stmt}进行处理。
+
+\begin{mdframed}
+	\begin{minted}[breaklines,breakanywhere]{antlr}
+lval: 
+    Identifier 
+    | (Identifier LeftBracket exp RightBracket)
+    | (Identifier LeftParen RightParen); // 此行于编写SafeCIRBuilder.cpp时删去
+
+stmt: 
+    block
+    | lval Assign exp SemiColon
+    | SemiColon
+    | exp SemiColon
+    | If LeftParen cond RightParen stmt (Else stmt)?
+    | While LeftParen cond RightParen stmt
+    | Identifier LeftParen RightParen SemiColon; // 此行于编写SafeCIRBuilder.cpp时添加
+  \end{minted}
+\end{mdframed}
+
+对于\texttt{exp}的文法规则，我们发现其优先级存在问题，我们将其进行了修改。
+
+\begin{mdframed}
+	\begin{minted}[breaklines,breakanywhere]{antlr}
+exp:
+    lval
+    | number
+    | LeftParen exp RightParen
+    | (Minus | Plus) exp // 此行于编写SafeCIRBuilder.cpp时添加，用于优先处理正负号
+    | exp (Multiply | Divide | Modulo) exp // 此行于编写SafeCIRBuilder.cpp时添加，用于优先处理乘、除、模运算
+    | exp (Plus | Minus) exp
+    | exp (Equal | NonEqual | Less | Greater | LessEqual | GreaterEqual) exp;
+  \end{minted}
+\end{mdframed}
+
+
 
 \subsubsection{AstBuilder.cpp}
 
@@ -244,10 +302,8 @@ exp:
 
 \begin{mdframed}
 	\begin{minted}[breaklines,breakanywhere]{cpp}
-#define DEBUG 1
-#define DEBUG_SIGN "[d] "
-if (DEBUG)
-  printf("%s %s %d %d\n", DEBUG_SIGN, __func__, result->line, result->pos);
+if (JJY_DEBUG_AST)
+  printf("%s %s %d %d\n", JJY_DEBUG_SIGN, __func__, result->line, result->pos);
   \end{minted}
 \end{mdframed}
 

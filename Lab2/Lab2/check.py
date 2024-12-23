@@ -95,8 +95,8 @@ tested = 0
 for t in testcases:
     if target != 'all' and t != target:
         continue
-    if t == 'trick.c':
-        continue
+    # if t == 'trick.c':
+    #     continue
     tested += 1
     print(t, end=' ')
     t = os.path.join(TESTCASE_DIR, t)

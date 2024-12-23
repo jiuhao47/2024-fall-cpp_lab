@@ -1,0 +1,6 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{n}{llvm}\PYG{o}{::}\PYG{n}{Value}\PYG{+w}{ }\PYG{o}{*}\PYG{n}{cmp\PYGZus{}zero}\PYG{+w}{     }\PYG{o}{=}\PYG{+w}{ }\PYG{n}{builder}\PYG{p}{.}\PYG{n}{CreateICmpSLT}\PYG{p}{(}\PYG{+w}{ }\PYG{n}{index}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{zero\PYGZus{}const}\PYG{+w}{ }\PYG{p}{);}
+\PYG{n}{llvm}\PYG{o}{::}\PYG{n}{Value}\PYG{+w}{ }\PYG{o}{*}\PYG{n}{cmp\PYGZus{}length}\PYG{+w}{   }\PYG{o}{=}\PYG{+w}{ }\PYG{n}{builder}\PYG{p}{.}\PYG{n}{CreateICmpSGE}\PYG{p}{(}\PYG{+w}{ }\PYG{n}{index}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{length\PYGZus{}const}\PYG{+w}{ }\PYG{p}{);}
+\PYG{n}{llvm}\PYG{o}{::}\PYG{n}{Value}\PYG{+w}{ }\PYG{o}{*}\PYG{n}{cmp}\PYG{+w}{          }\PYG{o}{=}\PYG{+w}{ }\PYG{n}{builder}\PYG{p}{.}\PYG{n}{CreateOr}\PYG{p}{(}\PYG{+w}{ }\PYG{n}{cmp\PYGZus{}zero}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{cmp\PYGZus{}length}\PYG{+w}{ }\PYG{p}{);}
+\PYG{n}{builder}\PYG{p}{.}\PYG{n}{CreateCondBr}\PYG{p}{(}\PYG{+w}{ }\PYG{n}{cmp}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{check\PYGZus{}fail}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{check\PYGZus{}success}\PYG{+w}{ }\PYG{p}{);}
+\end{Verbatim}

@@ -1,0 +1,8 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k}{if}\PYG{+w}{ }\PYG{p}{(}\PYG{n}{index}\PYG{+w}{ }\PYG{o}{\PYGZlt{}}\PYG{+w}{ }\PYG{l+m+mi}{0}\PYG{+w}{ }\PYG{o}{||}\PYG{+w}{ }\PYG{n}{index}\PYG{+w}{ }\PYG{o}{\PYGZgt{}=}\PYG{+w}{ }\PYG{n}{length}\PYG{p}{)}\PYG{+w}{ }\PYG{p}{\PYGZob{}}
+\PYG{+w}{  }\PYG{c+c1}{// jmp to check\PYGZus{}fail}
+\PYG{p}{\PYGZcb{}}
+\PYG{k}{else}\PYG{p}{\PYGZob{}}
+\PYG{+w}{ }\PYG{c+c1}{// jmp to check\PYGZus{}success}
+\PYG{p}{\PYGZcb{}}
+\end{Verbatim}

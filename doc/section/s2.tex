@@ -1,0 +1,200 @@
+\documentclass[../main.tex]{subfiles}
+\begin{document}
+\section{实验二}
+
+\subsection{题目}
+
+\kaishu
+
+\begin{enumerate}
+	\item 基于实验一生成的抽象语法树，生成测例的LLVM IR。
+	\item 对部分语义错误进行编译时静态检查和报错。
+	\item 对访问obc数组的语句进行插入用于数组越界访问检测的IR代码，进行动态检查和报错。
+\end{enumerate}
+
+\songti
+\subsection{工程修改说明}
+
+笔者添加了\texttt{Utils.h}用于定义调试输出宏。除此以外未修改\texttt{SafeCIRBuilder.cpp}以外的文件。
+
+\begin{mdframed}
+	\begin{minted}[breaklines,breakanywhere]{cpp}
+// Utils.h
+#define JJY_DEBUG_AST 0
+#define JJY_DEBUG_IR 1
+#define JJY_DEBUG_OBC_CHECK 1
+#define JJY_DEBUG_SIGN "[j] "
+  \end{minted}
+\end{mdframed}
+
+\subsection{实现过程及困难}
+
+\subsubsection{生成测例的LLVM IR}
+
+在编写IR生成相关代码中，笔者认为有以下几点需要核心注意的地方
+
+\begin{enumerate}
+	\item \textbf{框架中几个重要函数的理解，搞清楚这些函数的作用与调用时机，可以帮助我们更方便的实现IR生成。}
+	      \begin{enumerate}
+		      \item \texttt{EXPECT\_RVAL}、\texttt{EXPECT\_LVAL}和\texttt{IS\_EXPECT\_LVAL}：
+
+		            这些宏用于管理表达式的值类型（左值/右值）检查：
+		            \begin{enumerate}
+			            \item \texttt{EXPECT\_RVAL(f)}: 期望表达式\texttt{f}返回右值
+			            \item \texttt{EXPECT\_LVAL(f)}: 期望表达式\texttt{f}返回左值
+			            \item \texttt{IS\_EXPECT\_LVAL()}: 检查当前是否期望返回左值
+		            \end{enumerate}
+
+		            通过维护一个值类型栈来进行表达式求值时的左值/右值检查。
+
+		      \item \texttt{enter\_scope}和\texttt{exit\_scope}：
+
+		            这两个函数通过维护一个作用域栈来实现代码块的作用域进入和退出管理，确保变量的可见性符合语言规范。
+
+		      \item \texttt{lookup\_variable}：
+
+		            此函数为自主实现，从最近的作用域开始，逐层向外查找变量名，返回第一个匹配的变量信息，如果找不到则返回无效值。
+		      \item \texttt{declare\_variable}：
+
+		            在当前作用域中声明一个新变量，如果变量名已存在则返回失败，否则将变量信息存入并返回成功。
+		      \item \texttt{set\_int\_result}，\texttt{set\_value\_result}，\texttt{get\_int\_result}，\texttt{get\_value\_result}\footnote{笔者直到写报告的时候才发现有一个没用上的\texttt{get\_result\_as\_value}函数，借助此函数可以简化部分实现。}：
+
+		            这组函数实现了一个临时结果存取系统，可以存储和获取两种类型的结果（整数和LLVM Value指针）。
+	      \end{enumerate}
+	\item \textbf{对LLVM IR生成相关API的使用，笔者参照了框架中给出的\texttt{build\_example.cpp}与\texttt{example.c}，熟悉并掌握了以下API的使用}
+
+	      \begin{enumerate}
+		      \item 基本块操作：
+		            \begin{itemize}
+			            \item \texttt{CreateBasicBlock()} - 创建基本块
+			            \item \texttt{SetInsertPoint()} - 设置插入点
+			            \item \texttt{GetInsertBlock()} - 获取当前插入点所在基本块
+		            \end{itemize}
+
+		      \item 跳转指令：
+		            \begin{itemize}
+			            \item \texttt{CreateBr()} - 创建无条件跳转
+			            \item \texttt{CreateCondBr()} - 创建条件跳转
+		            \end{itemize}
+
+		      \item 内存操作：
+		            \begin{itemize}
+			            \item \texttt{CreateAlloca()} - 创建局部变量分配
+			            \item \texttt{CreateStore()} - 创建存储操作
+			            \item \texttt{CreateLoad()} - 创建加载操作
+			            \item \texttt{CreateGEP()} - 创建获取元素指针操作
+		            \end{itemize}
+
+		      \item 比较指令：
+		            \begin{itemize}
+			            \item \texttt{CreateICmpSLT()} - 有符号小于比较
+			            \item \texttt{CreateICmpSLE()} - 有符号小于等于比较
+			            \item \texttt{CreateICmpSGT()} - 有符号大于比较
+			            \item \texttt{CreateICmpSGE()} - 有符号大于等于比较
+			            \item \texttt{CreateICmpEQ()} - 等于比较
+		            \end{itemize}
+
+		      \item 算术运算：
+		            \begin{itemize}
+			            \item \texttt{CreateAdd()} - 加法
+			            \item \texttt{CreateSub()} - 减法
+			            \item \texttt{CreateMul()} - 乘法
+			            \item \texttt{CreateSDiv()} - 有符号除法
+			            \item \texttt{CreateSRem()} - 有符号取余
+			            \item \texttt{CreateNeg()} - 取负
+			            \item \texttt{CreateOr()} - 逻辑或
+		            \end{itemize}
+
+		      \item 函数相关：
+		            \begin{itemize}
+			            \item \texttt{CreateCall()} - 创建函数调用
+			            \item \texttt{CreateRetVoid()} - 创建void返回
+		            \end{itemize}
+
+		      \item 常量创建：
+		            \begin{itemize}
+			            \item \texttt{getInt32()} - 创建32位整型常量
+			            \item \texttt{ConstantInt::get()} - 创建整型常量
+			            \item \texttt{ConstantDataArray::getString()} - 创建字符串常量
+		            \end{itemize}
+
+		      \item 类型相关：
+		            \begin{itemize}
+			            \item \texttt{Type::getInt32Ty()} - 获取32位整型类型
+			            \item \texttt{ArrayType::get()} - 获取数组类型
+		            \end{itemize}
+	      \end{enumerate}
+	\item \textbf{IR生成实现过程中的困难主要在于表达式、左值的实现}
+	      \begin{enumerate}
+		      \item 表达式求值实现困难主要在于\texttt{SafeCParser.g4}的语法错误，由于错误的表达式优先级定义，抽象语法树中的一元运算符表达式的优先级过低，导致了诸如\texttt{-1+4}的表达式被错误的解析为\texttt{-(1+4)}，而不是正确的\texttt{(-1)+4}。笔者通过修改\texttt{SafeCParser.g4}中的表达式优先级定义，将一元运算符的优先级提高，解决了这个问题\footnote{此部分已在Lab1的实验报告中提及，这里不再赘述}。
+		      \item 左值的实现困难主要在于对左值的理解，左值是一个可以出现在赋值语句左侧的表达式，可以是变量、数组元素。
+		            \begin{enumerate}
+			            \item 对于变量左值，只需要返回变量的指针即可。
+			            \item 对于数组元素左值，需要返回数组元素的指针，这里需要注意数组元素的指针是一个指向数组元素的指针，而不是数组元素的值。
+		            \end{enumerate}
+
+		            对应的右值实现则需要使用\texttt{CreateLoad}返回变量的值或数组元素的值。
+
+		      \item 变量定义的实现困难主要在于全局变量与局部变量的区分。
+	      \end{enumerate}
+\end{enumerate}
+
+\subsubsection{编译时静态检查}
+
+笔者实现了对部分语义错误的编译时静态检查，其大多已自然融入在IR生成的实现逻辑中，但笔者在变量定义作用域管理中遇到了一些困难。
+
+笔者通过查找待定义的变量出现在的作用域，判断作用域是否为当前作用域来判断变量是否重复定义。具体代码实现如下
+
+\begin{mdframed}
+	\begin{minted}[breaklines,breakanywhere]{cpp}
+// 查找变量是否在当前作用域中定义
+VarInfo var_info = lookup_variable( name );
+size_t scope_index;
+for ( auto it = scoped_variables.rbegin( ); it != scoped_variables.rend( ); ++it ) {
+  if ( it->variable_map.count( name ) ) {
+    scope_index = std::distance( it, scoped_variables.rend( ) );
+    break;
+  }
+}
+if ( var_info.is_valid( ) && scoped_variables.size( ) == scope_index ) {
+  std::cerr << node.line << ":" << node.pos << ": variable '" << name
+            << "' is declared more than one times" << std::endl;
+  error_flag = true;
+  return;
+}
+  \end{minted}
+\end{mdframed}
+
+\subsubsection{动态检查和报错}
+
+笔者实现了对访问obc数组的语句进行插入用于数组越界访问检测的IR代码，进行动态检查和报错。笔者通过在数组访问前插入检查代码，判断数组访问是否越界，如果越界则输出错误信息并终止程序。
+
+其核心逻辑如下
+
+\begin{mdframed}
+	\begin{minted}[breaklines,breakanywhere]{cpp}
+if (index < 0 || index >= length) {
+  // jmp to check_fail
+}
+else{
+ // jmp to check_success
+}
+  \end{minted}
+\end{mdframed}
+
+对应的IR代码实现如下
+
+\begin{mdframed}
+	\begin{minted}[breaklines,breakanywhere]{cpp}
+llvm::Value *cmp_zero     = builder.CreateICmpSLT( index, zero_const );
+llvm::Value *cmp_length   = builder.CreateICmpSGE( index, length_const );
+llvm::Value *cmp          = builder.CreateOr( cmp_zero, cmp_length );
+builder.CreateCondBr( cmp, check_fail, check_success );
+  \end{minted}
+\end{mdframed}
+
+然后只需要将\texttt{obc\_check}函数插入到obc数组访问前即可。
+
+\subsection{彩蛋样例trick.c分析}
+
+\end{document}
