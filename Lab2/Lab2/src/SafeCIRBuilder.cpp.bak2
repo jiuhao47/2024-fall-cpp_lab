@@ -42,14 +42,10 @@ void SafeCIRBuilder::obc_check( llvm::Value *index, int array_length, int node_l
 
   // Create basic blocks
   llvm::Function *function = builder.GetInsertBlock( )->getParent( );
-  llvm::BasicBlock *obc_check =
-      llvm::BasicBlock::Create( context, "obc_check_", function );
-  llvm::BasicBlock *obc_err = llvm::BasicBlock::Create( context, "obc_err_", function );
-  llvm::BasicBlock *obc_ok  = llvm::BasicBlock::Create( context, "obc_ok_", function );
-
-  // Create no conditional jump to obc_check
-  builder.CreateBr( obc_check );
-  builder.SetInsertPoint( obc_check );
+  llvm::BasicBlock *check_fail =
+      llvm::BasicBlock::Create( context, "check_fail", function );
+  llvm::BasicBlock *check_success =
+      llvm::BasicBlock::Create( context, "check_success", function );
 
   // Insert code to check if index is in [0, length)
   llvm::Type *int32_type    = llvm::Type::getInt32Ty( context );
@@ -58,10 +54,10 @@ void SafeCIRBuilder::obc_check( llvm::Value *index, int array_length, int node_l
   llvm::Value *cmp_zero     = builder.CreateICmpSLT( index, zero_const );
   llvm::Value *cmp_length   = builder.CreateICmpSGE( index, length_const );
   llvm::Value *cmp          = builder.CreateOr( cmp_zero, cmp_length );
-  builder.CreateCondBr( cmp, obc_err, obc_ok );
+  builder.CreateCondBr( cmp, check_fail, check_success );
 
   // Insert code to check_fail
-  builder.SetInsertPoint( obc_err );
+  builder.SetInsertPoint( check_fail );
   llvm::Value *arg0_val     = llvm::ConstantInt::get( int32_type, node_line );
   llvm::Value *arg1_val     = llvm::ConstantInt::get( int32_type, node_pos );
   llvm::Value *arg2_val     = llvm::ConstantDataArray::getString( context, name );
@@ -76,7 +72,7 @@ void SafeCIRBuilder::obc_check( llvm::Value *index, int array_length, int node_l
   builder.CreateRetVoid( );
 
   // Insert code to check_success
-  builder.SetInsertPoint( obc_ok );
+  builder.SetInsertPoint( check_success );
 
   return;
 }

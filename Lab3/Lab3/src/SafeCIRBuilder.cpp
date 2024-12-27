@@ -2,7 +2,9 @@
 #include "Utils.h"
 #include <llvm-15/llvm/IR/Value.h>
 
-void printType( llvm::Type *type );
+// For obc_check count
+int obc_check_count = 0;
+
 // For lval and rval identification.
 // Expect the function f to return an rval.
 #define EXPECT_RVAL( f )                                                                 \
@@ -41,11 +43,18 @@ void SafeCIRBuilder::obc_check( llvm::Value *index, int array_length, int node_l
   //          ... (next insert point here)
 
   // Create basic blocks
+  std::string name_suffix  = std::to_string( obc_check_count );
   llvm::Function *function = builder.GetInsertBlock( )->getParent( );
-  llvm::BasicBlock *check_fail =
-      llvm::BasicBlock::Create( context, "check_fail", function );
-  llvm::BasicBlock *check_success =
-      llvm::BasicBlock::Create( context, "check_success", function );
+  llvm::BasicBlock *obc_check =
+      llvm::BasicBlock::Create( context, "obc_check_" + name_suffix, function );
+  llvm::BasicBlock *obc_err =
+      llvm::BasicBlock::Create( context, "obc_err_" + name_suffix, function );
+  llvm::BasicBlock *obc_ok =
+      llvm::BasicBlock::Create( context, "obc_ok_" + name_suffix, function );
+
+  // Create no conditional jump to obc_check
+  builder.CreateBr( obc_check );
+  builder.SetInsertPoint( obc_check );
 
   // Insert code to check if index is in [0, length)
   llvm::Type *int32_type    = llvm::Type::getInt32Ty( context );
@@ -53,11 +62,11 @@ void SafeCIRBuilder::obc_check( llvm::Value *index, int array_length, int node_l
   llvm::Value *length_const = llvm::ConstantInt::get( int32_type, array_length );
   llvm::Value *cmp_zero     = builder.CreateICmpSLT( index, zero_const );
   llvm::Value *cmp_length   = builder.CreateICmpSGE( index, length_const );
-  llvm::Value *cmp          = builder.CreateOr( cmp_zero, cmp_length );
-  builder.CreateCondBr( cmp, check_fail, check_success );
+  llvm::Value *cmp          = builder.CreateOr( cmp_length, cmp_zero );
+  builder.CreateCondBr( cmp, obc_err, obc_ok );
 
   // Insert code to check_fail
-  builder.SetInsertPoint( check_fail );
+  builder.SetInsertPoint( obc_err );
   llvm::Value *arg0_val     = llvm::ConstantInt::get( int32_type, node_line );
   llvm::Value *arg1_val     = llvm::ConstantInt::get( int32_type, node_pos );
   llvm::Value *arg2_val     = llvm::ConstantDataArray::getString( context, name );
@@ -72,8 +81,9 @@ void SafeCIRBuilder::obc_check( llvm::Value *index, int array_length, int node_l
   builder.CreateRetVoid( );
 
   // Insert code to check_success
-  builder.SetInsertPoint( check_success );
+  builder.SetInsertPoint( obc_ok );
 
+  obc_check_count++;
   return;
 }
 
@@ -1145,11 +1155,4 @@ bool SafeCIRBuilder::get_result_as_value( llvm::Value **val )
   } else {
     return false;
   }
-}
-void printType( llvm::Type *type )
-{
-  std::string type_str;
-  llvm::raw_string_ostream rso( type_str );
-  type->print( rso );
-  std::cout << "Type: " << rso.str( ) << std::endl;
 }
