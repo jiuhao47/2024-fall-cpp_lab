@@ -3,7 +3,7 @@ void main()
 	int x[0x8];
 	int index;
 	int addr;
-	
+
 	input();
 	index = input_var;
 	while (index >= 0)

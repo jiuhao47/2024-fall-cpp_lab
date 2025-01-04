@@ -149,6 +149,13 @@ void ConstantPropagatorVisitor::compDFVal( llvm::Instruction *inst,
             }
             res = val1 / val2;
             break;
+          case llvm::Instruction::SRem:
+            if ( val2 == 0 ) {
+              result->top = true;
+              goto end_compute;
+            }
+            res = val1 % val2;
+            break;
           case llvm::Instruction::Or:
             if ( JJY_DEBUG_OPT ) {
               llvm::outs( ) << JJY_DEBUG_SIGN << " Or: " << val1 << " | " << val2 << "\n";
@@ -211,6 +218,7 @@ void ConstantPropagatorVisitor::compDFVal( llvm::Instruction *inst,
   else if ( llvm::LoadInst *loadInst = llvm::dyn_cast<llvm::LoadInst>( inst ) ) {
     llvm::Value *ptr = loadInst->getPointerOperand( );
 
+    // load
     // 创建新的KSet存储加载结果
     KSet *result     = new KSet( );
 
@@ -228,10 +236,15 @@ void ConstantPropagatorVisitor::compDFVal( llvm::Instruction *inst,
       }
       // 如果是全局变量，直接获取其常量值，
       // 获取找到的全局变量的常量值
-      llvm::GlobalVariable *globalVar = llvm::dyn_cast<llvm::GlobalVariable>( ptr );
-      llvm::ConstantInt *constPtr =
-          llvm::dyn_cast<llvm::ConstantInt>( globalVar->getInitializer( ) );
-      result->const_vals.insert( constPtr->getSExtValue( ) );
+      if ( global_state.cvmap.find( ptr ) != global_state.cvmap.end( ) ) {
+        result->top        = global_state.cvmap[ ptr ]->top;
+        result->const_vals = global_state.cvmap[ ptr ]->const_vals;
+      } else {
+        llvm::GlobalVariable *globalVar = llvm::dyn_cast<llvm::GlobalVariable>( ptr );
+        llvm::ConstantInt *constPtr =
+            llvm::dyn_cast<llvm::ConstantInt>( globalVar->getInitializer( ) );
+        result->const_vals.insert( constPtr->getSExtValue( ) );
+      }
     } else {
       // 如果在cvmap中找不到对应的KSet，结果设为TOP
       if ( JJY_DEBUG_OPT ) {
@@ -291,6 +304,13 @@ void ConstantPropagatorVisitor::compDFVal( llvm::Instruction *inst,
     llvm::Value *val = storeInst->getValueOperand( );
     llvm::Value *ptr = storeInst->getPointerOperand( );
 
+    // 判断ptr是否为全局变量指针
+    // if ( global_variable.find( ptr ) != global_variable.end( ) ) {
+    //   if ( JJY_DEBUG_OPT ) {
+    //     llvm::outs( ) << JJY_DEBUG_SIGN << " Store: global\n";
+    //   }
+    // }
+
     // 获取或创建pointer的KSet
     KSet *ptr_kset   = nullptr;
     if ( state->cvmap.find( ptr ) == state->cvmap.end( ) ) {
@@ -306,15 +326,120 @@ void ConstantPropagatorVisitor::compDFVal( llvm::Instruction *inst,
       ptr_kset->top = false;
       ptr_kset->const_vals.clear( );
       ptr_kset->const_vals.insert( constVal->getSExtValue( ) );
+      if ( global_variable.find( ptr ) != global_variable.end( ) ) {
+        // auto old_global_state     = global_state;
+        // global_state.cvmap[ ptr ] = ptr_kset;
+
+        if ( JJY_DEBUG_OPT_FUNC ) {
+          llvm::outs( ) << JJY_DEBUG_SIGN << " Store Global Const\n";
+        }
+        if ( global_state.cvmap.find( ptr ) == global_state.cvmap.end( ) ) {
+          global_state.cvmap[ ptr ] = new KSet( );
+        }
+        global_state.cvmap[ ptr ]->top = ptr_kset->top;
+        // global_state.cvmap[ ptr ]->const_vals = ptr_kset->const_vals;
+        global_state.cvmap[ ptr ]->const_vals.insert( ptr_kset->const_vals.begin( ),
+                                                      ptr_kset->const_vals.end( ) );
+
+        // if ( old_global_state != global_state ) {
+        //   is_global_state_changed = true;
+        //   if ( JJY_DEBUG_OPT ) {
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " Store: global\n";
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " old global_state: " <<
+        //     old_global_state
+        //                   << "\n";
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " global_state: " << global_state <<
+        //     "\n";
+        //   }
+        //   if ( JJY_DEBUG_OPT_FUNC ) {
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " Store: global\n";
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " old global_state: " <<
+        //     old_global_state
+        //                   << "\n";
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " global_state: " << global_state <<
+        //     "\n";
+        //   }
+        // }
+      }
     } else if ( state->cvmap.find( val ) != state->cvmap.end( ) ) {
       // value有对应的KSet
       KSet *val_kset       = state->cvmap[ val ];
       ptr_kset->top        = val_kset->top;
       ptr_kset->const_vals = val_kset->const_vals;
+      if ( global_variable.find( ptr ) != global_variable.end( ) ) {
+        // auto old_global_state     = global_state;
+
+        if ( JJY_DEBUG_OPT_FUNC ) {
+          llvm::outs( ) << JJY_DEBUG_SIGN << " Store Global Var\n";
+        }
+        if ( global_state.cvmap.find( ptr ) == global_state.cvmap.end( ) ) {
+          global_state.cvmap[ ptr ] = new KSet( );
+        }
+        global_state.cvmap[ ptr ]->top = val_kset->top;
+        global_state.cvmap[ ptr ]->const_vals.insert( val_kset->const_vals.begin( ),
+                                                      val_kset->const_vals.end( ) );
+
+        //
+        //
+        //
+        // global_state.cvmap[ ptr ] = ptr_kset;
+        // if ( old_global_state != global_state ) {
+        //   is_global_state_changed = true;
+        //   if ( JJY_DEBUG_OPT ) {
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " Store: global\n";
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " old global_state: " <<
+        //     old_global_state
+        //                   << "\n";
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " global_state: " << global_state <<
+        //     "\n";
+        //   }
+        //   if ( JJY_DEBUG_OPT_FUNC ) {
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " Store: global\n";
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " old global_state: " <<
+        //     old_global_state
+        //                   << "\n";
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " global_state: " << global_state <<
+        //     "\n";
+        //   }
+        // }
+      }
     } else {
       // 其他情况设为top
       ptr_kset->top = true;
       ptr_kset->const_vals.clear( );
+      if ( global_variable.find( ptr ) != global_variable.end( ) ) {
+        // auto old_global_state     = global_state;
+        // global_state.cvmap[ ptr ] = ptr_kset;
+        //
+
+        if ( JJY_DEBUG_OPT_FUNC ) {
+          llvm::outs( ) << JJY_DEBUG_SIGN << " Store Global Other\n";
+        }
+        if ( global_state.cvmap.find( ptr ) == global_state.cvmap.end( ) ) {
+          global_state.cvmap[ ptr ] = new KSet( );
+        }
+        global_state.cvmap[ ptr ]->top = true;
+
+        // if ( old_global_state != global_state ) {
+        //   is_global_state_changed = true;
+        //   if ( JJY_DEBUG_OPT ) {
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " Store: global\n";
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " old global_state: " <<
+        //     old_global_state
+        //                   << "\n";
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " global_state: " << global_state <<
+        //     "\n";
+        //   }
+        //   if ( JJY_DEBUG_OPT_FUNC ) {
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " Store: global\n";
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " old global_state: " <<
+        //     old_global_state
+        //                   << "\n";
+        //     llvm::outs( ) << JJY_DEBUG_SIGN << " global_state: " << global_state <<
+        //     "\n";
+        //   }
+        // }
+      }
     }
     // llvm::Value *val = storeInst->getValueOperand( );
     // llvm::Value *ptr = storeInst->getPointerOperand( );
@@ -510,8 +635,45 @@ void ConstantPropagatorVisitor::compDFVal( llvm::Instruction *inst,
     // add result to state
     state->cvmap[ inst ] = result;
   }
+  // call指令
+  else if ( llvm::CallInst *callInst = llvm::dyn_cast<llvm::CallInst>( inst ) ) {
+    // if ( JJY_DEBUG_OPT ) {
+    //   llvm::outs( ) << JJY_DEBUG_SIGN << " CallInst: " << *callInst << "\n";
+    //   llvm::outs( ) << JJY_DEBUG_SIGN
+    //                 << " Called function: " << callInst->getCalledFunction(
+    //                 )->getName(
+    //                 )
+    //                 << "\n";
+    // }
+    // const std::string func_name = callInst->getCalledFunction( )->getName( ).str( );
+    // if ( func_name == "obc_check_error" || func_name == "input" ||
+    //      func_name == "output" || func_name == "input_impl" ||
+    //      func_name == "output_impl" ) {
+    //   if ( JJY_DEBUG_OPT ) {
+    //     llvm::outs( ) << JJY_DEBUG_SIGN << " Call to " << func_name << ", skip" <<
+    //     "\n";
+    //   }
+    //   return;
+    // } else {
+    //   if ( JJY_DEBUG_OPT ) {
+    //     llvm::outs( ) << JJY_DEBUG_SIGN << " state: " << *state << "\n";
+    //   }
+    //   // 打印global_var state
+    //   for ( auto *gv : global_variable ) {
+    //     if ( state->cvmap.find( gv ) != state->cvmap.end( ) ) {
+    //       // 将gv的状态添加到被调用函数的参数中
+    //       llvm::Function *F       = callInst->getCalledFunction( );
+    //       // 获取F的entry block
+    //       llvm::BasicBlock &entry = F->getEntryBlock( );
 
-  // or 指令
+    //       // 打印 entry
+    //       if ( JJY_DEBUG_OPT ) {
+    //         llvm::outs( ) << JJY_DEBUG_SIGN << " entry: " << entry << "\n";
+    //       }
+    //     }
+    //   }
+    // }
+  }
 
   else {
     if ( JJY_DEBUG_OPT ) {
@@ -530,8 +692,8 @@ void ConstantPropagatorVisitor::merge( ConstValueState *dest, ConstValueState *s
   if ( JJY_DEBUG_OPT ) {
     llvm::outs( ) << JJY_DEBUG_SIGN << " " << __FILE_NAME__ << " " << __func__ << " "
                   << __LINE__ << "\n";
-    llvm::outs( ) << JJY_DEBUG_SIGN << " dest: " << *dest << "\n";
-    llvm::outs( ) << JJY_DEBUG_SIGN << " src: " << *src << "\n";
+    // llvm::outs( ) << JJY_DEBUG_SIGN << " dest: " << *dest << "\n";
+    // llvm::outs( ) << JJY_DEBUG_SIGN << " src: " << *src << "\n";
   }
   // TODO
   // 遍历源状态中的所有映射
@@ -626,7 +788,11 @@ bool ConstValuePass::runOnModule( llvm::Module &M )
 
   // TODO: Compute dataflow information for each function in f_worklist.
   // 对每个函数进行数据流分析
-  for ( auto *F : f_worklist ) {
+  auto f_worklist_copy = f_worklist;
+  while ( !f_worklist.empty( ) ) {
+    llvm::Function *F = *f_worklist.begin( );
+    f_worklist.erase( F );
+
     if ( JJY_DEBUG_OPT ) {
       // print function name
       llvm::outs( ) << "============\n";
@@ -638,12 +804,18 @@ bool ConstValuePass::runOnModule( llvm::Module &M )
 
     // 调用前向数据流分析框架
     typename DataflowBBResult<ConstValueState>::Type result_map;
+    auto old_global_state = visitor.global_state;
     compForwardDataflow( F, &visitor, &result_map, initval );
-    if ( JJY_DEBUG_OPT ) {
-      if ( JJY_DEBUG_OPT_OUTPUT ) {
-        printf( "%s %s %s initval\n", JJY_DEBUG_SIGN, __FILE_NAME__, __func__ );
-        llvm::outs( ) << "initval " << initval << "\n";
+    if ( old_global_state != visitor.global_state ) {
+      // 将f_worklist重置为f_worklist_copy
+      if ( JJY_DEBUG_OPT_FUNC ) {
+        llvm::outs( ) << JJY_DEBUG_SIGN << " Function: " << F->getName( )
+                      << " changed the state\n";
+        llvm::outs( ) << JJY_DEBUG_SIGN << " global_state: " << visitor.global_state
+                      << "\n";
       }
+      f_worklist = f_worklist_copy;
+      continue;
     }
 
     // 将分析结果存储到全局结果中
@@ -660,9 +832,23 @@ bool ConstValuePass::runOnModule( llvm::Module &M )
           if ( JJY_DEBUG_OPT ) {
             llvm::outs( ) << "check_redundant: " << BB.getName( ) << "\n";
           }
-          check_redundant.push_back( &BB );
+          // 检查BB是否在check_redundant中，如不在则加入
+          //
+          if ( std::find( check_redundant.begin( ), check_redundant.end( ), &BB ) ==
+               check_redundant.end( ) ) {
+            check_redundant.push_back( &BB );
+          }
+          // check_redundant.push_back( &BB );
         }
       }
+    }
+  }
+
+  // 打印check_redundant
+  if ( JJY_DEBUG_OPT ) {
+    llvm::outs( ) << "check_redundant: \n";
+    for ( auto bb : check_redundant ) {
+      llvm::outs( ) << *bb << "\n";
     }
   }
 

@@ -117,7 +117,7 @@ void compForwardDataflow( llvm::Function *fn, DataflowVisitor<T> *visitor,
       // show worklist content
       llvm::outs( ) << JJY_DEBUG_SIGN << " worklist:\n";
       for ( llvm::BasicBlock *bb : worklist ) {
-        llvm::outs( ) << bb->getName( ) << "\n";
+        llvm::outs( ) << "\t" << bb->getName( ) << "\n";
       }
     }
     // if ( BB.getName( ).startswith( "obc_err_" ) ) {
@@ -196,6 +196,12 @@ void compForwardDataflow( llvm::Function *fn, DataflowVisitor<T> *visitor,
       ( *result )[ BB ].second = out;
       for ( auto succ = succ_begin( BB ); succ != succ_end( BB ); ++succ ) {
         worklist.push_back( *succ );
+      }
+    }
+    if ( JJY_DEBUG_OPT ) {
+      llvm::outs( ) << JJY_DEBUG_SIGN << " worklist after push :\n";
+      for ( llvm::BasicBlock *bb : worklist ) {
+        llvm::outs( ) << "\t" << bb->getName( ) << "\n";
       }
     }
   }

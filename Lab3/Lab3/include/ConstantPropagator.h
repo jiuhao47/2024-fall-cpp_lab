@@ -133,6 +133,8 @@ public:
   std::unordered_set<llvm::Value *> global_variable;
   // result[bb] -> (in state, out state)
   DataflowBBResult<ConstValueState>::Type *result;
+  ConstValueState global_state;
+  // bool is_global_state_changed = false;
   // TODO: add members
 
   llvm::Module *M;
