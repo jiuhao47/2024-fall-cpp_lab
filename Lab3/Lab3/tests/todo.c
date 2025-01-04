@@ -9,8 +9,8 @@
 // DONE: 9
 // TODO: 10
 // TODO: 11
-// TODO: 12
-// TODO: 13
+// DONE: 12
+// DONE: 13
 // TODO: 14
 // TODO: 15
 // TODO: 16

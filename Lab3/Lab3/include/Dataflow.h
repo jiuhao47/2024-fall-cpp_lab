@@ -34,6 +34,8 @@ template <class T> class DataflowVisitor
 {
 public:
   llvm::Module *module;
+  bool is_call_inst               = false;
+  llvm::Function *function_called = nullptr;
 
   virtual ~DataflowVisitor( ) {}
 
@@ -183,7 +185,11 @@ void compForwardDataflow( llvm::Function *fn, DataflowVisitor<T> *visitor,
     } else {
       visitor->compDFVal( BB, &out, true );
     }
+    // if ( visitor->is_call_inst ) {
+    //   return;
+    // }
     // visitor->compDFVal( BB, &out, true );
+    //
 
     if ( JJY_DEBUG_OPT ) {
       // show in and out

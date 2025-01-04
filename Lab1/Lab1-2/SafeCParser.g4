@@ -80,7 +80,6 @@ lval: Identifier | (Identifier LeftBracket exp RightBracket);
 number: IntConst;
 // 数字
 
-// 
 exp:
     lval
     | number

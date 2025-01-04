@@ -234,16 +234,21 @@ void ConstantPropagatorVisitor::compDFVal( llvm::Instruction *inst,
       if ( JJY_DEBUG_OPT ) {
         llvm::outs( ) << JJY_DEBUG_SIGN << " Load: global\n";
       }
-      // 如果是全局变量，直接获取其常量值，
-      // 获取找到的全局变量的常量值
-      if ( global_state.cvmap.find( ptr ) != global_state.cvmap.end( ) ) {
-        result->top        = global_state.cvmap[ ptr ]->top;
-        result->const_vals = global_state.cvmap[ ptr ]->const_vals;
+      // 如果是@input_var，则设置为top
+      if ( ptr->getName( ) == "input_var" ) {
+        result->top = true;
       } else {
-        llvm::GlobalVariable *globalVar = llvm::dyn_cast<llvm::GlobalVariable>( ptr );
-        llvm::ConstantInt *constPtr =
-            llvm::dyn_cast<llvm::ConstantInt>( globalVar->getInitializer( ) );
-        result->const_vals.insert( constPtr->getSExtValue( ) );
+        // 如果是全局变量，直接获取其常量值，
+        // 获取找到的全局变量的常量值
+        if ( global_state.cvmap.find( ptr ) != global_state.cvmap.end( ) ) {
+          result->top        = global_state.cvmap[ ptr ]->top;
+          result->const_vals = global_state.cvmap[ ptr ]->const_vals;
+        } else {
+          llvm::GlobalVariable *globalVar = llvm::dyn_cast<llvm::GlobalVariable>( ptr );
+          llvm::ConstantInt *constPtr =
+              llvm::dyn_cast<llvm::ConstantInt>( globalVar->getInitializer( ) );
+          result->const_vals.insert( constPtr->getSExtValue( ) );
+        }
       }
     } else {
       // 如果在cvmap中找不到对应的KSet，结果设为TOP
@@ -637,6 +642,9 @@ void ConstantPropagatorVisitor::compDFVal( llvm::Instruction *inst,
   }
   // call指令
   else if ( llvm::CallInst *callInst = llvm::dyn_cast<llvm::CallInst>( inst ) ) {
+    is_call_inst    = true;
+    function_called = callInst->getCalledFunction( );
+    // return;
     // if ( JJY_DEBUG_OPT ) {
     //   llvm::outs( ) << JJY_DEBUG_SIGN << " CallInst: " << *callInst << "\n";
     //   llvm::outs( ) << JJY_DEBUG_SIGN
@@ -806,6 +814,12 @@ bool ConstValuePass::runOnModule( llvm::Module &M )
     typename DataflowBBResult<ConstValueState>::Type result_map;
     auto old_global_state = visitor.global_state;
     compForwardDataflow( F, &visitor, &result_map, initval );
+    // if ( visitor.is_call_inst ) {
+    //   visitor.is_call_inst = false;
+    //   // 将visitor.function_called加入f_worklist
+    //   f_worklist.insert( visitor.function_called );
+    //   // continue;
+    // }
     if ( old_global_state != visitor.global_state ) {
       // 将f_worklist重置为f_worklist_copy
       if ( JJY_DEBUG_OPT_FUNC ) {

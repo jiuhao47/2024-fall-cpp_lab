@@ -439,9 +439,17 @@ antlrcpp::Any AstBuilder::visitStmt( SafeCParser::StmtContext *ctx )
     result->pos  = ctx->getStart( )->getCharPositionInLine( );
     result->cond.reset( visit( ctx->cond( ) ).as<cond_node *>( ) );
 
-    block_node *if_body;
-    if_body = visit( ctx->stmt( 0 ) ).as<block_node *>( );
-    result->if_body.reset( dynamic_cast<stmt_node *>( if_body ) );
+    if ( ctx->stmt( 0 )->block( ) ) {
+      block_node *if_body;
+      if_body = visit( ctx->stmt( 0 ) ).as<block_node *>( );
+      result->if_body.reset( dynamic_cast<stmt_node *>( if_body ) );
+    } else {
+      stmt_node *if_body;
+      if_body = visit( ctx->stmt( 0 ) ).as<stmt_node *>( );
+      result->if_body.reset( dynamic_cast<stmt_node *>( if_body ) );
+    }
+    // stmt_node *if_body;
+    // if_body = visit( ctx->stmt( 0 ) ).as<stmt_node *>( );
 
     if ( auto stmt = ctx->stmt( 1 ) ) {
       block_node *else_body;

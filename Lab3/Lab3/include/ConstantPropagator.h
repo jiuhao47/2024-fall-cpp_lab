@@ -135,6 +135,8 @@ public:
   DataflowBBResult<ConstValueState>::Type *result;
   ConstValueState global_state;
   // bool is_global_state_changed = false;
+  bool is_call_inst               = false;
+  llvm::Function *function_called = nullptr;
   // TODO: add members
 
   llvm::Module *M;

@@ -282,6 +282,9 @@ void SafeCIRBuilder::visit( cond_node &node )
   case RelOp::EQUAL:
     cmp = builder.CreateICmpEQ( lhs, rhs );
     break;
+  case RelOp::NON_EQUAL:
+    cmp = builder.CreateICmpNE( lhs, rhs );
+    break;
   default:
     std::cerr << node.line << ":" << node.pos << ": unknown relation operator"
               << std::endl;
