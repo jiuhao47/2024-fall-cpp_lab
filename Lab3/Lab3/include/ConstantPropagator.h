@@ -135,8 +135,12 @@ public:
   DataflowBBResult<ConstValueState>::Type *result;
   ConstValueState global_state;
   // bool is_global_state_changed = false;
-  bool is_call_inst               = false;
-  llvm::Function *function_called = nullptr;
+  // bool is_call_inst               = false;
+  // llvm::Function *function_called = nullptr;
+  std::map<llvm::Function *, ConstValueState> func_state;
+  bool processing_call         = false;
+  bool is_func_call_processing = false;
+  ConstValueState global_state_bak;
   // TODO: add members
 
   llvm::Module *M;

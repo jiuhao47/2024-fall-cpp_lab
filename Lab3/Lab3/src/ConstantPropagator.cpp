@@ -331,7 +331,8 @@ void ConstantPropagatorVisitor::compDFVal( llvm::Instruction *inst,
       ptr_kset->top = false;
       ptr_kset->const_vals.clear( );
       ptr_kset->const_vals.insert( constVal->getSExtValue( ) );
-      if ( global_variable.find( ptr ) != global_variable.end( ) ) {
+      if ( global_variable.find( ptr ) != global_variable.end( ) &&
+           !is_func_call_processing ) {
         // auto old_global_state     = global_state;
         // global_state.cvmap[ ptr ] = ptr_kset;
 
@@ -371,7 +372,8 @@ void ConstantPropagatorVisitor::compDFVal( llvm::Instruction *inst,
       KSet *val_kset       = state->cvmap[ val ];
       ptr_kset->top        = val_kset->top;
       ptr_kset->const_vals = val_kset->const_vals;
-      if ( global_variable.find( ptr ) != global_variable.end( ) ) {
+      if ( global_variable.find( ptr ) != global_variable.end( ) &&
+           !is_func_call_processing ) {
         // auto old_global_state     = global_state;
 
         if ( JJY_DEBUG_OPT_FUNC ) {
@@ -412,7 +414,8 @@ void ConstantPropagatorVisitor::compDFVal( llvm::Instruction *inst,
       // 其他情况设为top
       ptr_kset->top = true;
       ptr_kset->const_vals.clear( );
-      if ( global_variable.find( ptr ) != global_variable.end( ) ) {
+      if ( global_variable.find( ptr ) != global_variable.end( ) &&
+           !is_func_call_processing ) {
         // auto old_global_state     = global_state;
         // global_state.cvmap[ ptr ] = ptr_kset;
         //
@@ -642,47 +645,204 @@ void ConstantPropagatorVisitor::compDFVal( llvm::Instruction *inst,
   }
   // call指令
   else if ( llvm::CallInst *callInst = llvm::dyn_cast<llvm::CallInst>( inst ) ) {
-    is_call_inst    = true;
-    function_called = callInst->getCalledFunction( );
-    // return;
-    // if ( JJY_DEBUG_OPT ) {
-    //   llvm::outs( ) << JJY_DEBUG_SIGN << " CallInst: " << *callInst << "\n";
-    //   llvm::outs( ) << JJY_DEBUG_SIGN
-    //                 << " Called function: " << callInst->getCalledFunction(
-    //                 )->getName(
-    //                 )
-    //                 << "\n";
-    // }
-    // const std::string func_name = callInst->getCalledFunction( )->getName( ).str( );
-    // if ( func_name == "obc_check_error" || func_name == "input" ||
-    //      func_name == "output" || func_name == "input_impl" ||
-    //      func_name == "output_impl" ) {
-    //   if ( JJY_DEBUG_OPT ) {
-    //     llvm::outs( ) << JJY_DEBUG_SIGN << " Call to " << func_name << ", skip" <<
-    //     "\n";
-    //   }
-    //   return;
-    // } else {
-    //   if ( JJY_DEBUG_OPT ) {
-    //     llvm::outs( ) << JJY_DEBUG_SIGN << " state: " << *state << "\n";
-    //   }
-    //   // 打印global_var state
-    //   for ( auto *gv : global_variable ) {
-    //     if ( state->cvmap.find( gv ) != state->cvmap.end( ) ) {
-    //       // 将gv的状态添加到被调用函数的参数中
-    //       llvm::Function *F       = callInst->getCalledFunction( );
-    //       // 获取F的entry block
-    //       llvm::BasicBlock &entry = F->getEntryBlock( );
+    // is_call_inst    = true;
+    // function_called = callInst->getCalledFunction( );
+    auto func                   = callInst->getCalledFunction( );
+    const std::string func_name = func->getName( ).str( );
+    if ( func_name == "obc_check_error" || func_name == "input" ||
+         func_name == "output" || func_name == "input_impl" ||
+         func_name == "output_impl" ) {
+      if ( JJY_DEBUG_OPT ) {
+        llvm::outs( ) << JJY_DEBUG_SIGN << " Call to " << func_name << ", skip" << "\n";
+      }
+      return;
+    } else {
+      func_state[ func ]      = global_state;
+      // is_call_inst    = true;
+      // function_called = callInst->getCalledFunction( );
+      // llvm::outs( ) << JJY_DEBUG_SIGN << " state: " << *state << "\n";
+      // llvm::outs( ) << JJY_DEBUG_SIGN << " trying to recalc: " <<
+      // (function_called)->getName() << "\n";
 
-    //       // 打印 entry
-    //       if ( JJY_DEBUG_OPT ) {
-    //         llvm::outs( ) << JJY_DEBUG_SIGN << " entry: " << entry << "\n";
-    //       }
-    //     }
-    //   }
-    // }
+      // 遍历函数的所有基本块的所有指令
+
+      is_func_call_processing = true;
+      // std::map<llvm::BasicBlock *, std::pair<ConstValueState *, ConstValueState *>>
+      //     bb_state;
+      // std::vector<llvm::BasicBlock *> bb_list;
+      // for ( llvm::BasicBlock &bb : *func ) {
+      //   bb_list.push_back( &bb );
+      //   bb_state[ &bb ] = std::make_pair( new ConstValueState( *state ),
+      //                                     new ConstValueState( *state ) );
+      // }
+      // while ( !bb_list.empty( ) ) {
+      //   llvm::BasicBlock &bb = *bb_list.back( );
+      //   bb_list.pop_back( );
+      //   // 判断bb是否为entry
+      //   ConstValueState *in_state;
+      //   ConstValueState *out_state;
+      //   in_state = new ConstValueState( *state );
+      //   if ( &bb == &( func->getEntryBlock( ) ) ) {
+      //     //
+      //   } else {
+      //     for ( auto pred = pred_begin( &bb ); pred != pred_end( &bb ); ++pred ) {
+      //       merge( in_state, bb_state[ *pred ].second );
+      //     }
+      //   }
+      //   bb_state[ &bb ].first      = in_state;
+      //   out_state                  = in_state;
+
+      //   ConstValueState *state_tmp = out_state;
+      //   if ( bb.getName( ).startswith( "obc_err_" ) ) {
+
+      //   } else {
+
+      //     // for ( llvm::Instruction &inst : bb ) {
+      //     //   compDFVal( &inst, state_tmp );
+      //     // }
+      //     for ( llvm::BasicBlock::iterator ii = bb.begin( ), ie = bb.end( ); ii !=
+      //     ie;
+      //           ++ii ) {
+      //       llvm::Instruction *inst = &*ii;
+      //       compDFVal( inst, state_tmp );
+      //     }
+      //     // if ( block->getName( ) == "entry" && block->getParent( )->getName( ) ==
+      //     // "main" ) {
+      //     //   initGlobal( state );
+      //     // }
+      //     // for ( llvm::BasicBlock::iterator ii = block->begin( ), ie = block->end(
+      //     );
+      //     // ii != ie;
+      //     //       ++ii ) {
+      //     //   llvm::Instruction *inst = &*ii;
+      //     //   compDFVal( inst, state );
+      //     // }
+      //   }
+      //   out_state = state_tmp;
+      //   if ( !( out_state == bb_state[ &bb ].second ) ) {
+      //     bb_state[ &bb ].second = out_state;
+      //     for ( auto succ = succ_begin( &bb ); succ != succ_end( &bb ); ++succ ) {
+      //       bb_list.push_back( *succ );
+      //     }
+      //   }
+
+      //   // bb_state[ &bb ].second = out_state;
+
+      //   // for ( llvm::Instruction &inst : bb ) {
+      //   //   // llvm::outs( ) << JJY_DEBUG_SIGN << " " << inst << "\n";
+      //   //   compDFVal( &inst, state );
+      //   // }
+      //   // merge( state, old_state );
+
+      //   // if ( BB == &fn->getEntryBlock( ) ) {
+      //   //   in = initval;
+      //   // } else {
+      //   //   for ( auto pred = pred_begin( BB ); pred != pred_end( BB ); ++pred ) {
+      //   //     visitor->merge( &in, &( *result )[ *pred ].second );
+      //   //   }
+      //   // }
+      // }
+      // state                   = bb_state[ &( func->back( ) ) ].second;
+      for ( llvm::BasicBlock &bb : *func ) {
+        for ( llvm::Instruction &inst : bb ) {
+          compDFVal( &inst, state );
+        }
+      }
+      // XXXX: 核心问题在于，函数调用过程的处理方式！
+      // 这里理论上把合流算法写好就能跑了应该，但是1.5日清晨精力有限没写完，后面争取能够写完吧...
+      // 目前13/16
+      //
+      is_func_call_processing = false;
+
+      // 处理这个函数调用过程，并将这个函数调用的结果合流到state中
+      // // 打印global_var state
+      // for ( auto *gv : global_variable ) {
+      //   if ( state->cvmap.find( gv ) != state->cvmap.end( ) ) {
+      //     // 将gv的状态添加到被调用函数的参数中
+      //     llvm::Function *F       = callInst->getCalledFunction( );
+      //     // 获取F的entry block
+      //     llvm::BasicBlock &entry = F->getEntryBlock( );
+
+      //     // 打印 entry
+      //     if ( JJY_DEBUG_OPT ) {
+      //       llvm::outs( ) << JJY_DEBUG_SIGN << " entry: " << entry << "\n";
+      //     }
+      //   }
+      // }
+    }
   }
 
+  // else if ( llvm::BranchInst *brInst = llvm::dyn_cast<llvm::BranchInst>( inst ) ) {
+  //   if ( JJY_DEBUG_OPT ) {
+  //     llvm::outs( ) << JJY_DEBUG_SIGN << " BranchInst: " << *brInst << "\n";
+  //   }
+  //   // 获取条件变量（可能为无条件），判断条件变量是否为TOP，且br是否为while循环(br
+  //   // body_x)的判断条件
+  //   //
+  //   if ( brInst->isConditional( ) ) {
+  //     llvm::Value *cond = brInst->getCondition( );
+  //     if ( state->cvmap.find( cond ) != state->cvmap.end( ) ) {
+  //       KSet *cond_kset = state->cvmap[ cond ];
+  //       if ( cond_kset->top ) {
+  //         // 如果条件变量为TOP，且br为while循环的判断条件
+  //         // 则将while循环的body块的所有变量的常量传播为TOP
+  //         auto br_stmt_1 = brInst->getSuccessor( 0 );
+  //         if ( br_stmt_1->getName( ).startswith( "body" ) ) {
+  //           if ( JJY_DEBUG_OPT ) {
+  //             llvm::outs( ) << JJY_DEBUG_SIGN << " br_while" << "\n";
+  //           }
+  //           for ( llvm::Instruction &inst : *br_stmt_1 ) {
+  //             if ( state->cvmap.find( &inst ) != state->cvmap.end( ) ) {
+  //               state->cvmap[ &inst ]->top = true;
+  //               state->cvmap[ &inst ]->const_vals.clear( );
+  //             } else {
+  //               KSet *result          = new KSet( );
+  //               result->top           = true;
+  //               state->cvmap[ &inst ] = result;
+  //               if ( JJY_DEBUG_OPT ) {
+  //                 llvm::outs( ) << JJY_DEBUG_SIGN << " br_while: " << inst
+  //                               << " has set to top" << "\n";
+  //               }
+  //             }
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+  //
+  //
+  //
+  //
+  //
+  //
+  //
+  //
+  //
+  //
+  //
+  //
+  //
+  //
+  //
+  //
+  // llvm::Value *cond = brInst->getCondition( );
+  // if ( state->cvmap.find( cond ) != state->cvmap.end( ) ) {
+  //   KSet *cond_kset = state->cvmap[ cond ];
+  //   if ( cond_kset->top ) {
+  //     // 如果条件变量为TOP，且br为while循环的判断条件
+  //     // 则将while循环的body块的所有指令常量传播为TOP
+  //     auto br_stmt_1 = brInst->getSuccessor( 0 );
+  //     if ( br_stmt_1->getName( ).startswith( "body" ) ) {
+  //       for ( llvm::Instruction &inst : *br_stmt_1 ) {
+  //         if ( state->cvmap.find( &inst ) != state->cvmap.end( ) ) {
+  //           state->cvmap[ &inst ]->top = true;
+  //           state->cvmap[ &inst ]->const_vals.clear( );
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
+  // }
   else {
     if ( JJY_DEBUG_OPT ) {
       llvm::outs( ) << JJY_DEBUG_SIGN << " Other inst: " << *inst << "\n";
@@ -820,16 +980,39 @@ bool ConstValuePass::runOnModule( llvm::Module &M )
     //   f_worklist.insert( visitor.function_called );
     //   // continue;
     // }
-    if ( old_global_state != visitor.global_state ) {
-      // 将f_worklist重置为f_worklist_copy
-      if ( JJY_DEBUG_OPT_FUNC ) {
+    // if ( old_global_state != visitor.global_state ) {
+    //   // 将f_worklist重置为f_worklist_copy
+    //   if ( JJY_DEBUG_OPT_FUNC ) {
+    //     llvm::outs( ) << JJY_DEBUG_SIGN << " Function: " << F->getName( )
+    //                   << " changed the state\n";
+    //     llvm::outs( ) << JJY_DEBUG_SIGN << " global_state: " << visitor.global_state
+    //                   << "\n";
+    //   }
+    //   f_worklist = f_worklist_copy;
+    //   continue;
+    // }
+    if ( !visitor.func_state.empty( ) ) {
+      if ( !visitor.processing_call ) {
+        visitor.global_state_bak = visitor.global_state;
+      }
+      visitor.processing_call = true;
+      // 取出其中的第一个元素
+      auto func_state         = visitor.func_state.begin( );
+      // 将func_state的key放到f_worklist的开头
+      f_worklist.insert( func_state->first );
+      // 将func_state的value赋值给global_state
+      visitor.global_state = func_state->second;
+      // 将取出的第一个元素从func_state中删除
+      visitor.func_state.erase( func_state );
+      if ( JJY_DEBUG_OPT ) {
         llvm::outs( ) << JJY_DEBUG_SIGN << " Function: " << F->getName( )
                       << " changed the state\n";
         llvm::outs( ) << JJY_DEBUG_SIGN << " global_state: " << visitor.global_state
                       << "\n";
       }
-      f_worklist = f_worklist_copy;
-      continue;
+    } else {
+      visitor.processing_call = false;
+      visitor.global_state    = visitor.global_state_bak;
     }
 
     // 将分析结果存储到全局结果中
